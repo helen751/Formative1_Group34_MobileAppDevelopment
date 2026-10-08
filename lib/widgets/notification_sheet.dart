@@ -232,10 +232,10 @@ class _NotificationSheetState extends State<NotificationSheet> {
               markAsRead(notification);
             },
             tileColor: notification.unread
-                ? color.withOpacity(0.08)
+                ? color.withValues(alpha: 0.08)
                 : null,
             leading: CircleAvatar(
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(
                 getNotificationIcon(notification.kind),
                 color: color,

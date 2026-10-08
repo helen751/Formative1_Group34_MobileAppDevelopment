@@ -230,7 +230,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
                 vertical: 8,
               ),
               decoration: BoxDecoration(
-                color: status.color.withOpacity(0.15),
+                color: status.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: status.color,
