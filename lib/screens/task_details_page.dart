@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../database/database_helper.dart';
 import '../models/project_task.dart';
+import 'create_task_page.dart';
 
 class TaskDetailsPage extends StatefulWidget {
   const TaskDetailsPage({
@@ -122,15 +123,28 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
     Navigator.pop(context, true);
   }
 
-  // opening the edit page later
-  void openEditPage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('The edit form will be connected here'),
+  // opening the edit page
+  Future<void> openEditPage() async {
+    final updated = await Navigator.push<ProjectTask>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateTaskPage(task: task),
       ),
     );
 
-    // replace the message above when the edit form is ready
+    if (updated == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      task = updated;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Task updated'),
+      ),
+    );
   }
 
   // formatting the due date
