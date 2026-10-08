@@ -25,10 +25,10 @@ class Member {
       return word.isNotEmpty;
     }).toList();
 
-    // the first name matches the assignee saved on each task
+    // tasks only save the first name as the assignee
     final shortName = words.isEmpty ? name : words.first;
 
-    // the first letter of the first two names, e.g. "DN" for "Derrick Nshuti"
+    // initials from the first two names, e.g. DN
     final initials = words.take(2).map((word) {
       return word[0].toUpperCase();
     }).join();
