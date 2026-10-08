@@ -15,6 +15,29 @@ enum SlaStatus {
   final Color color;
 }
 
+// creating the priority options for a task
+enum TaskPriority {
+  low('Low', DevTrackColors.onTrack),
+  medium('Medium', DevTrackColors.atRisk),
+  high('High', DevTrackColors.overdue);
+
+  const TaskPriority(this.label, this.color);
+
+  final String label;
+  final Color color;
+}
+
+// creating the work stages a task moves through
+enum TaskStage {
+  toDo('To Do'),
+  inProgress('In Progress'),
+  done('Done');
+
+  const TaskStage(this.label);
+
+  final String label;
+}
+
 // creating the model for a task
 class ProjectTask {
   const ProjectTask({
@@ -24,6 +47,8 @@ class ProjectTask {
     required this.assignee,
     required this.dueDate,
     this.isCompleted = false,
+    this.priority = TaskPriority.medium,
+    this.stage = TaskStage.toDo,
   });
 
   final int? id;
@@ -32,6 +57,10 @@ class ProjectTask {
   final String assignee;
   final DateTime dueDate;
   final bool isCompleted;
+  final TaskPriority priority;
+
+  // to do, in progress or done
+  final TaskStage stage;
 
   // getting the number of hours left
   int? get dueInHours {
@@ -93,19 +122,44 @@ class ProjectTask {
       'assignee': assignee,
       'due_date': dueDate.toIso8601String(),
       'is_completed': isCompleted ? 1 : 0,
+      'priority': priority.name,
+      'stage': _savedStage.name,
     };
+  }
+
+  // getting the stage to save
+  TaskStage get _savedStage {
+    if (isCompleted) {
+      return TaskStage.done;
+    }
+
+    return stage == TaskStage.done ? TaskStage.toDo : stage;
   }
 
   // converting SQLite data back into a task
   factory ProjectTask.fromMap(Map<String, Object?> map) {
+    final isCompleted = map['is_completed'] == 1;
+
     return ProjectTask(
       id: map['id'] as int,
       title: map['title'] as String,
       description: map['description'] as String? ?? '',
       assignee: map['assignee'] as String,
       dueDate: DateTime.parse(map['due_date'] as String),
-      isCompleted: map['is_completed'] == 1,
+      isCompleted: isCompleted,
+      priority: TaskPriority.values.asNameMap()[map['priority']] ??
+          TaskPriority.medium,
+      stage: isCompleted
+          ? TaskStage.done
+          : _openStage(map['stage'] as String?),
     );
+  }
+
+  // getting the stage of an open task
+  static TaskStage _openStage(String? name) {
+    final stage = TaskStage.values.asNameMap()[name] ?? TaskStage.toDo;
+
+    return stage == TaskStage.done ? TaskStage.toDo : stage;
   }
 
   // creating a new copy of a task with updated values
@@ -116,6 +170,8 @@ class ProjectTask {
     String? assignee,
     DateTime? dueDate,
     bool? isCompleted,
+    TaskPriority? priority,
+    TaskStage? stage,
   }) {
     return ProjectTask(
       id: id ?? this.id,
@@ -124,6 +180,8 @@ class ProjectTask {
       assignee: assignee ?? this.assignee,
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
+      priority: priority ?? this.priority,
+      stage: stage ?? this.stage,
     );
   }
 }

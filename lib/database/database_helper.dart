@@ -11,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const String databaseName = 'devtrack.db';
-  static const int databaseVersion = 4;
+  static const int databaseVersion = 5;
 
   static const String userTable = 'users';
   static const String taskTable = 'tasks';
@@ -87,6 +87,8 @@ class DatabaseHelper {
         assignee TEXT NOT NULL,
         due_date TEXT NOT NULL,
         is_completed INTEGER NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL DEFAULT 'medium',
+        stage TEXT NOT NULL DEFAULT 'toDo',
         created_at TEXT NOT NULL
       )
     ''');
@@ -162,6 +164,29 @@ class DatabaseHelper {
       ALTER TABLE $notificationTable
       ADD COLUMN task_id INTEGER
       ''',
+        );
+      }
+    }
+
+    if (oldVersion < 5) {
+      final columns = await database.rawQuery(
+        'PRAGMA table_info($taskTable)',
+      );
+
+      final columnNames = columns.map((column) {
+        return column['name'];
+      }).toSet();
+
+      // adding priority and stage columns
+      if (!columnNames.contains('priority')) {
+        await database.execute(
+          "ALTER TABLE $taskTable ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'",
+        );
+      }
+
+      if (!columnNames.contains('stage')) {
+        await database.execute(
+          "ALTER TABLE $taskTable ADD COLUMN stage TEXT NOT NULL DEFAULT 'toDo'",
         );
       }
     }
