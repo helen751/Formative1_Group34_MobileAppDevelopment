@@ -8,6 +8,8 @@ import '../theme/devtrack_theme.dart';
 import '../widgets/filter_pill.dart';
 import '../widgets/task_tile.dart';
 
+import 'task_details_page.dart';
+
 /// Whose tasks the dashboard counts: the whole team or only the signed-in user.
 enum _Scope { everyone, mine }
 

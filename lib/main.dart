@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
+import 'database/database_helper.dart';
+import 'database/database_seeder.dart';
 
 import 'screens/home_shell.dart';
 import 'theme/devtrack_theme.dart';
+import 'screens/login_page.dart';
 
-void main() {
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // opening the database
+  await DatabaseHelper.instance.database;
+
+  // adding default data when the tables are empty
+  await DatabaseSeeder.seedDatabase();
+
   runApp(const MyApp());
 }
 
@@ -19,7 +31,7 @@ class MyApp extends StatelessWidget {
       title: 'DevTrack',
       debugShowCheckedModeBanner: false,
       theme: DevTrackTheme.light,
-      home: const HomeShell(),
+      home: const LoginPage(),
     );
   }
 }
