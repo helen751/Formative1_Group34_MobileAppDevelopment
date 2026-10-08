@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
+import 'create_task_page.dart';
 import 'dashboard.dart';
 import 'team_members_page.dart';
 
@@ -22,10 +24,18 @@ class _HomeShellState extends State<HomeShell> {
 
   void _select(int index) => setState(() => _index = index);
 
-  // Placeholder action until the create-task form is plugged into the task module.
-  void _onNewTask() {
+  // opening the create task page
+  Future<void> _onNewTask() async {
+    final created = await Navigator.of(context).push<ProjectTask>(
+      MaterialPageRoute(builder: (_) => const CreateTaskPage()),
+    );
+
+    if (created == null || !mounted) {
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('New task form is coming soon')),
+      SnackBar(content: Text('"${created.title}" assigned to ${created.assignee}')),
     );
   }
 
