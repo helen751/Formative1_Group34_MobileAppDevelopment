@@ -94,9 +94,10 @@ extension TaskListStats on List<Task> {
 /// What a notification is about; decides its icon, color and filter bucket.
 enum NotificationKind { overdue, atRisk, completed, assigned }
 
-/// An entry in the notifications sheet. Immutable: use [markRead] for a read copy.
+// creating one notification
 class AppNotification {
   const AppNotification({
+    this.id,
     required this.title,
     required this.subtitle,
     required this.timeLabel,
@@ -104,21 +105,38 @@ class AppNotification {
     this.unread = false,
   });
 
+  final int? id;
   final String title;
   final String subtitle;
-
-  /// Relative time, e.g. "2h ago".
   final String timeLabel;
   final NotificationKind kind;
-
-  /// Unread items get a highlighted row, a bold title and a green dot.
   final bool unread;
 
-  /// A copy of this notification marked as read.
-  AppNotification markRead() => AppNotification(
-        title: title,
-        subtitle: subtitle,
-        timeLabel: timeLabel,
-        kind: kind,
-      );
+  // converting database data into a notification
+  factory AppNotification.fromMap(
+      Map<String, Object?> map,
+      ) {
+    return AppNotification(
+      id: map['id'] as int,
+      title: map['title'] as String,
+      subtitle: map['subtitle'] as String,
+      timeLabel: map['time_label'] as String,
+      kind: NotificationKind.values.byName(
+        map['kind'] as String,
+      ),
+      unread: map['unread'] == 1,
+    );
+  }
+
+  // creating a copy marked as read
+  AppNotification markRead() {
+    return AppNotification(
+      id: id,
+      title: title,
+      subtitle: subtitle,
+      timeLabel: timeLabel,
+      kind: kind,
+      unread: false,
+    );
+  }
 }

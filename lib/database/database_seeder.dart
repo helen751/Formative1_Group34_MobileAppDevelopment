@@ -109,20 +109,6 @@ class DatabaseSeeder {
 
     final defaultNotifications = [
       {
-        'title': 'Design login screen is overdue',
-        'subtitle': 'Was due yesterday · Emmanuel',
-        'timeLabel': '2h ago',
-        'kind': 'overdue',
-        'unread': true,
-      },
-      {
-        'title': 'Set up SQLite tables is at risk',
-        'subtitle': 'Due in 20h · Helen',
-        'timeLabel': '5h ago',
-        'kind': 'atRisk',
-        'unread': true,
-      },
-      {
         'title': 'Build create/edit task form is at risk',
         'subtitle': 'Due in 2 days · Christian',
         'timeLabel': 'Yesterday',

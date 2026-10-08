@@ -8,7 +8,9 @@ import '../theme/devtrack_theme.dart';
 import '../widgets/filter_pill.dart';
 import '../widgets/task_tile.dart';
 
-import 'task_details_page.dart';
+import '../database/database_helper.dart';
+import '../widgets/notification_sheet.dart';
+import '../services/task_notification_service.dart';
 
 /// Whose tasks the dashboard counts: the whole team or only the signed-in user.
 enum _Scope { everyone, mine }
@@ -29,13 +31,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  /// Stands in for the SQLite fetch that pull-to-refresh waits on; swap for the
-  /// real repository call.
-  static const _fetchDelay = Duration(milliseconds: 700);
 
   // Shared with the notifications sheet so reading items there clears the bell dot.
+  // storing notifications from the database
   final _notifications =
-      ValueNotifier<List<AppNotification>>(List.of(mockNotifications));
+  ValueNotifier<List<AppNotification>>([]);
 
   // Set to false when the user closes the alert banner.
   bool _showAlert = true;
@@ -50,8 +50,58 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+
+    // loading notifications when the dashboard opens
+    loadNotifications();
+  }
+
+  // getting notifications from the database
+  Future<void> loadNotifications() async {
+    final savedNotifications =
+    await DatabaseHelper.instance.getNotifications();
+
+    if (!mounted) {
+      return;
+    }
+
+    _notifications.value = savedNotifications;
+  }
+
+  // opening the notification sheet
+  Future<void> openNotifications() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      builder: (context) {
+        return const NotificationSheet();
+      },
+    );
+
+    // updating the red dot after closing the sheet
+    await loadNotifications();
+  }
+
   // Pull-to-refresh handler: the spinner stays until this future completes.
-  Future<void> _fetch() => Future<void>.delayed(_fetchDelay);
+  // reloading tasks and notifications
+  Future<void> _fetch() async {
+    await TaskNotificationService.checkTaskDeadlines();
+    await loadNotifications();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,11 +156,15 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           ValueListenableBuilder<List<AppNotification>>(
             valueListenable: _notifications,
-            builder: (context, items, _) => _Header(
-              name: currentUserFirstName,
-              hasUnread: items.any((n) => n.unread),
-              onBell: () {},
-            ),
+            builder: (context, items, _) {
+              return _Header(
+                name: currentUserFirstName,
+                hasUnread: items.any((notification) {
+                  return notification.unread;
+                }),
+                onBell: openNotifications,
+              );
+            },
           ),
           const SizedBox(height: 16),
           _ScopeToggle(
@@ -121,9 +175,13 @@ class _DashboardPageState extends State<DashboardPage> {
           if (_showAlert && overdue + atRisk > 0) ...[
             const SizedBox(height: 16),
             _AlertBanner(
-              message: '$overdue overdue · $atRisk at risk – review your tasks',
-              onTap: () {}, 
-              onDismiss: () => setState(() => _showAlert = false),
+              message: '$overdue overdue · $atRisk at risk, review your tasks',
+              onTap: openNotifications,
+              onDismiss: () {
+                setState(() {
+                  _showAlert = false;
+                });
+              },
             ),
           ],
           const SizedBox(height: 16),
@@ -822,6 +880,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+
 /// Floating pill that starts task creation.
 class _NewTaskButton extends StatelessWidget {
   const _NewTaskButton({required this.onPressed});
@@ -870,3 +929,5 @@ class _NewTaskButton extends StatelessWidget {
     );
   }
 }
+
+

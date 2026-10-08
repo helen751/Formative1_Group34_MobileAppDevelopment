@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database/database_helper.dart';
 import 'database/database_seeder.dart';
+import 'services/task_notification_service.dart';
 
 import 'screens/home_shell.dart';
 import 'theme/devtrack_theme.dart';
@@ -15,6 +16,9 @@ Future<void> main() async {
 
   // adding default data when the tables are empty
   await DatabaseSeeder.seedDatabase();
+
+  // checking tasks for new notifications
+  await TaskNotificationService.checkTaskDeadlines();
 
   runApp(const MyApp());
 }
@@ -31,7 +35,7 @@ class MyApp extends StatelessWidget {
       title: 'DevTrack',
       debugShowCheckedModeBanner: false,
       theme: DevTrackTheme.light,
-      home: const LoginPage(),
+      home: const HomeShell(),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/project_task.dart';
+import '../models/devtrack_models.dart';
 
 class DatabaseHelper {
   // creating one database helper
@@ -10,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const String databaseName = 'devtrack.db';
-  static const int databaseVersion = 3;
+  static const int databaseVersion = 4;
 
   static const String userTable = 'users';
   static const String taskTable = 'tasks';
@@ -96,18 +97,20 @@ class DatabaseHelper {
       Database database,
       ) async {
     await database.execute('''
-      CREATE TABLE IF NOT EXISTS $notificationTable (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        title TEXT NOT NULL,
-        subtitle TEXT NOT NULL,
-        time_label TEXT NOT NULL,
-        kind TEXT NOT NULL,
-        unread INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES $userTable (id)
-      )
-    ''');
+    CREATE TABLE IF NOT EXISTS $notificationTable (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      task_id INTEGER,
+      title TEXT NOT NULL,
+      subtitle TEXT NOT NULL,
+      time_label TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      unread INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES $userTable (id),
+      FOREIGN KEY (task_id) REFERENCES $taskTable (id)
+    )
+  ''');
   }
 
   // updating an old database
@@ -141,6 +144,24 @@ class DatabaseHelper {
             'created_at': DateTime.now().toIso8601String(),
           },
           where: 'created_at IS NULL',
+        );
+      }
+    }
+    if (oldVersion < 4) {
+      final columns = await database.rawQuery(
+        'PRAGMA table_info($notificationTable)',
+      );
+
+      final hasTaskId = columns.any((column) {
+        return column['name'] == 'task_id';
+      });
+
+      if (!hasTaskId) {
+        await database.execute(
+          '''
+      ALTER TABLE $notificationTable
+      ADD COLUMN task_id INTEGER
+      ''',
         );
       }
     }
@@ -364,6 +385,7 @@ class DatabaseHelper {
   // adding a notification
   Future<int> insertNotification({
     int? userId,
+    int? taskId,
     required String title,
     required String subtitle,
     required String timeLabel,
@@ -376,6 +398,7 @@ class DatabaseHelper {
       notificationTable,
       {
         'user_id': userId,
+        'task_id': taskId,
         'title': title,
         'subtitle': subtitle,
         'time_label': timeLabel,
@@ -386,14 +409,39 @@ class DatabaseHelper {
     );
   }
 
-  // getting all the notifications
-  Future<List<Map<String, Object?>>> getNotifications() async {
+  // checking if a task notification already exists
+  Future<bool> taskNotificationExists(
+      int taskId,
+      String kind,
+      ) async {
     final db = await database;
 
-    return db.query(
+    final result = await db.query(
+      notificationTable,
+      where: 'task_id = ? AND kind = ?',
+      whereArgs: [
+        taskId,
+        kind,
+      ],
+      limit: 1,
+    );
+
+    return result.isNotEmpty;
+  }
+
+  // getting all the notifications
+// getting all the notifications
+  Future<List<AppNotification>> getNotifications() async {
+    final db = await database;
+
+    final notificationMaps = await db.query(
       notificationTable,
       orderBy: 'created_at DESC',
     );
+
+    return notificationMaps.map((notificationMap) {
+      return AppNotification.fromMap(notificationMap);
+    }).toList();
   }
 
   // getting notifications for one user
@@ -408,6 +456,21 @@ class DatabaseHelper {
       whereArgs: [userId],
       orderBy: 'created_at DESC',
     );
+  }
+
+  // counting unread notifications
+  Future<int> getUnreadNotificationCount() async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      '''
+    SELECT COUNT(*)
+    FROM $notificationTable
+    WHERE unread = 1
+    ''',
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   // marking a notification as read
