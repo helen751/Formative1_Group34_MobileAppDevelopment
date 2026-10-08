@@ -3,6 +3,13 @@ import 'package:sqflite/sqflite.dart';
 import '../models/project_task.dart';
 import 'database_helper.dart';
 
+/// Signed-in user; decides what the dashboard's "My tasks" scope shows.
+/// Replace with the logged-in user once auth is plugged in.
+const currentUserFirstName = 'Derrick';
+
+/// Project name shown on the dashboard progress card.
+const projectName = 'DevTrack';
+
 class DatabaseSeeder {
   // adding default data when the tables are empty
   static Future<void> seedDatabase() async {
