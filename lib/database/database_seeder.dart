@@ -3,8 +3,8 @@ import 'package:sqflite/sqflite.dart';
 import '../models/project_task.dart';
 import 'database_helper.dart';
 
-/// Signed-in user; decides what the dashboard's "My tasks" scope shows.
-/// Replace with the logged-in user once auth is plugged in.
+/// The user the dashboard treats as signed in (greeting and "My tasks").
+/// Temporary until login saves the real user.
 const currentUserFirstName = 'Derrick';
 
 /// Project name shown on the dashboard progress card.
@@ -18,9 +18,37 @@ class DatabaseSeeder {
     await _addDefaultNotifications();
   }
 
-  // the seeded members have no password yet, so this value can never
-  // match a real hash and they cannot sign in until one is set
-  static const String _lockedPasswordHash = '!';
+  // what the default users had before they got passwords
+  static const String _oldLockedPasswordHash = '!';
+
+  // the default team members and their passwords
+  // (passwords are saved as plain text)
+  static const _defaultUsers = [
+    (
+      fullName: 'Emmanuel',
+      email: 'emmanuel@devtrack.app',
+      password: 'Emmanuel@2026',
+      role: 'Auth Developer',
+    ),
+    (
+      fullName: 'Derrick Nshuti',
+      email: 'derrick@devtrack.app',
+      password: 'Derrick@2026',
+      role: 'Project Lead',
+    ),
+    (
+      fullName: 'Christian',
+      email: 'christian@devtrack.app',
+      password: 'Christian@2026',
+      role: 'Task Module Developer',
+    ),
+    (
+      fullName: 'Helen',
+      email: 'helen@devtrack.app',
+      password: 'Helen@2026',
+      role: 'Database & Stats',
+    ),
+  ];
 
   // adding the default team members
   static Future<void> _addDefaultUsers() async {
@@ -33,41 +61,32 @@ class DatabaseSeeder {
 
     final userCount = Sqflite.firstIntValue(result) ?? 0;
 
-    if (userCount > 0) {
+    // saving each default user
+    if (userCount == 0) {
+      for (final user in _defaultUsers) {
+        await DatabaseHelper.instance.insertUser(
+          fullName: user.fullName,
+          email: user.email,
+          password: user.password,
+          role: user.role,
+        );
+      }
+
       return;
     }
 
-    const defaultUsers = [
-      (
-        fullName: 'Emmanuel',
-        email: 'emmanuel@devtrack.app',
-        role: 'Auth Developer',
-      ),
-      (
-        fullName: 'Derrick Nshuti',
-        email: 'derrick@devtrack.app',
-        role: 'Project Lead',
-      ),
-      (
-        fullName: 'Christian',
-        email: 'christian@devtrack.app',
-        role: 'Task Module Developer',
-      ),
-      (
-        fullName: 'Helen',
-        email: 'helen@devtrack.app',
-        role: 'Database & Stats',
-      ),
-    ];
+    // old installs: giving the default users their passwords
+    for (final user in _defaultUsers) {
+      final savedUser =
+          await DatabaseHelper.instance.getUserByEmail(user.email);
 
-    // saving each default user
-    for (final user in defaultUsers) {
-      await DatabaseHelper.instance.insertUser(
-        fullName: user.fullName,
-        email: user.email,
-        passwordHash: _lockedPasswordHash,
-        role: user.role,
-      );
+      if (savedUser != null &&
+          savedUser['password'] == _oldLockedPasswordHash) {
+        await DatabaseHelper.instance.updateUserPassword(
+          email: user.email,
+          password: user.password,
+        );
+      }
     }
   }
 

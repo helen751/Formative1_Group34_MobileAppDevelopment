@@ -34,8 +34,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   // showing a loader while saving
   bool _isSaving = false;
 
-  // storing the team members from the database
-  // (stays null until they are loaded)
+  // team members from the database (null until loaded)
   List<Member>? _members;
 
   bool get _isEditing => widget.task != null;
@@ -333,7 +332,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                         )
                       : DropdownButtonFormField<String>(
-                          // the saved assignee must be one of the items
+                          // the dropdown breaks if the saved assignee isn't
+                          // in the list
                           initialValue: _members!
                                   .any((member) => member.shortName == _assignee)
                               ? _assignee

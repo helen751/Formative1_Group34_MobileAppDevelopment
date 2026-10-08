@@ -38,8 +38,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final _notifications =
   ValueNotifier<List<AppNotification>>([]);
 
-  // storing tasks from the database
-  // (stays null until the first load finishes)
+  // tasks from the database (null until the first load is done)
   List<ProjectTask>? _tasks;
   bool _loadFailed = false;
 
@@ -157,7 +156,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildContent() {
     final savedTasks = _tasks;
 
-    // Nothing to count until the database answers.
+    // Nothing to show until the tasks load.
     if (savedTasks == null) {
       return _loadFailed
           ? ListView(

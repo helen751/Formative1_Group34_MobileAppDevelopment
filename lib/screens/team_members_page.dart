@@ -8,7 +8,7 @@ import '../widgets/member_profile_sheet.dart';
 import '../widgets/status_badge.dart';
 
 /// Team tab: searchable list of member cards. Tapping a card opens that member's
-/// profile sheet. Members and tasks come from the database; pull down to reload.
+/// profile sheet. Everything comes from the database, pull down to reload it.
 class TeamMembersPage extends StatefulWidget {
   const TeamMembersPage({super.key});
 
@@ -20,8 +20,8 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
   // Current text in the search field.
   String _query = '';
 
-  // storing the members and tasks from the database
-  // (members stays null until the first load finishes)
+  // members and tasks from the database
+  // (members is null until the first load is done)
   List<Member>? _members;
   List<ProjectTask> _tasks = const [];
   bool _loadFailed = false;
@@ -87,8 +87,8 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
     );
   }
 
-  /// Everything under the "Team" title: a loader or error until the first load
-  /// finishes, then the summary line, search field and member cards.
+  /// Everything under the "Team" title. Shows a spinner or an error until the
+  /// first load is done, then the summary, search box and member cards.
   List<Widget> _buildBody() {
     final members = _members;
 
