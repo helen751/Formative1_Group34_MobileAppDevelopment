@@ -1,42 +1,4 @@
-import 'package:flutter/material.dart';
-
-import '../theme/devtrack_theme.dart';
-
-/// How a task stands against its deadline; also decides its color everywhere.
-enum SlaStatus {
-  onTrack('On Track', DevTrackColors.onTrack),
-  atRisk('At Risk', DevTrackColors.atRisk),
-  overdue('Overdue', DevTrackColors.overdue),
-  completed('Completed', DevTrackColors.completed);
-
-  const SlaStatus(this.label, this.color);
-
-  final String label;
-  final Color color;
-}
-
-/// A single project task. Mock data for now; the SQLite layer will replace it.
-class Task {
-  const Task({
-    required this.title,
-    required this.assignee,
-    required this.dueLabel,
-    required this.status,
-    this.dueInHours,
-  });
-
-  final String title;
-
-  /// Short name of the assigned member; matches [Member.shortName].
-  final String assignee;
-
-  /// Human readable due text, e.g. "Due in 20h" or "1 day overdue".
-  final String dueLabel;
-  final SlaStatus status;
-
-  /// Hours until the task is due (negative when overdue). Null once completed.
-  final int? dueInHours;
-}
+import 'project_task.dart';
 
 /// A team member shown on the Team page and in the profile sheet.
 class Member {
@@ -56,14 +18,38 @@ class Member {
   final String role;
   final String email;
 
+  // converting a row from the users table into a member
+  factory Member.fromMap(Map<String, Object?> map) {
+    final name = (map['full_name'] as String).trim();
+    final words = name.split(RegExp(r'\s+')).where((word) {
+      return word.isNotEmpty;
+    }).toList();
+
+    // the first name matches the assignee saved on each task
+    final shortName = words.isEmpty ? name : words.first;
+
+    // the first letter of the first two names, e.g. "DN" for "Derrick Nshuti"
+    final initials = words.take(2).map((word) {
+      return word[0].toUpperCase();
+    }).join();
+
+    return Member(
+      name: name,
+      shortName: shortName,
+      initials: initials.isEmpty ? '?' : initials,
+      role: map['role'] as String,
+      email: map['email'] as String,
+    );
+  }
+
   /// The tasks in [tasks] that are assigned to this member.
-  List<Task> tasksFrom(List<Task> tasks) =>
+  List<ProjectTask> tasksFrom(List<ProjectTask> tasks) =>
       tasks.where((t) => t.assignee == shortName).toList();
 }
 
 /// Counters used by the dashboard, team cards and profile sheet, so every number
 /// on screen is derived from the task list instead of being hard-coded.
-extension TaskListStats on List<Task> {
+extension TaskListStats on List<ProjectTask> {
   /// Number of tasks with the given [status].
   int countOf(SlaStatus status) => where((t) => t.status == status).length;
 
@@ -74,7 +60,7 @@ extension TaskListStats on List<Task> {
   double get progress => isEmpty ? 0 : doneCount / length;
 
   /// Tasks that are not completed yet.
-  List<Task> get open =>
+  List<ProjectTask> get open =>
       where((t) => t.status != SlaStatus.completed).toList();
 
   /// Open tasks due within the next 24 hours.

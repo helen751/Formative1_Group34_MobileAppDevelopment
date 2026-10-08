@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/devtrack_models.dart';
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
 import 'dark_button.dart';
 import 'task_tile.dart';
@@ -11,7 +12,7 @@ import 'task_tile.dart';
 Future<void> showMemberProfileSheet(
   BuildContext context, {
   required Member member,
-  required List<Task> tasks,
+  required List<ProjectTask> tasks,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -36,7 +37,7 @@ class MemberProfileSheet extends StatelessWidget {
   final Member member;
 
   /// Tasks assigned to [member].
-  final List<Task> tasks;
+  final List<ProjectTask> tasks;
 
   @override
   Widget build(BuildContext context) {

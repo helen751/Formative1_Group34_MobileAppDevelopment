@@ -199,6 +199,13 @@ class DatabaseHelper {
     );
   }
 
+  // getting all the team members
+  Future<List<Member>> getMembers() async {
+    final users = await getUsers();
+
+    return users.map(Member.fromMap).toList();
+  }
+
   // getting one user by email
   Future<Map<String, Object?>?> getUserByEmail(
       String email,

@@ -6,8 +6,62 @@ import 'database_helper.dart';
 class DatabaseSeeder {
   // adding default data when the tables are empty
   static Future<void> seedDatabase() async {
+    await _addDefaultUsers();
     await _addDefaultTasks();
     await _addDefaultNotifications();
+  }
+
+  // the seeded members have no password yet, so this value can never
+  // match a real hash and they cannot sign in until one is set
+  static const String _lockedPasswordHash = '!';
+
+  // adding the default team members
+  static Future<void> _addDefaultUsers() async {
+    final database = await DatabaseHelper.instance.database;
+
+    // checking if users already exist
+    final result = await database.rawQuery(
+      'SELECT COUNT(*) FROM ${DatabaseHelper.userTable}',
+    );
+
+    final userCount = Sqflite.firstIntValue(result) ?? 0;
+
+    if (userCount > 0) {
+      return;
+    }
+
+    const defaultUsers = [
+      (
+        fullName: 'Emmanuel',
+        email: 'emmanuel@devtrack.app',
+        role: 'Auth Developer',
+      ),
+      (
+        fullName: 'Derrick Nshuti',
+        email: 'derrick@devtrack.app',
+        role: 'Project Lead',
+      ),
+      (
+        fullName: 'Christian',
+        email: 'christian@devtrack.app',
+        role: 'Task Module Developer',
+      ),
+      (
+        fullName: 'Helen',
+        email: 'helen@devtrack.app',
+        role: 'Database & Stats',
+      ),
+    ];
+
+    // saving each default user
+    for (final user in defaultUsers) {
+      await DatabaseHelper.instance.insertUser(
+        fullName: user.fullName,
+        email: user.email,
+        passwordHash: _lockedPasswordHash,
+        role: user.role,
+      );
+    }
   }
 
   // adding the default tasks

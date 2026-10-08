@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../database/database_helper.dart';
 import '../models/devtrack_models.dart';
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
 import '../widgets/member_profile_sheet.dart';
 import '../widgets/status_badge.dart';
 
 /// Team tab: searchable list of member cards. Tapping a card opens that member's
-/// profile sheet.
+/// profile sheet. Members and tasks come from the database; pull down to reload.
 class TeamMembersPage extends StatefulWidget {
   const TeamMembersPage({super.key});
 
@@ -19,14 +20,98 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
   // Current text in the search field.
   String _query = '';
 
+  // storing the members and tasks from the database
+  // (members stays null until the first load finishes)
+  List<Member>? _members;
+  List<ProjectTask> _tasks = const [];
+  bool _loadFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // loading the team when the page opens
+    _load();
+  }
+
+  // getting the members and tasks from the database
+  Future<void> _load() async {
+    try {
+      final members = await DatabaseHelper.instance.getMembers();
+      final tasks = await DatabaseHelper.instance.getTasks();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _members = members;
+        _tasks = tasks;
+        _loadFailed = false;
+      });
+    } catch (error) {
+      debugPrint('Could not load the team: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _loadFailed = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    const members = mockMembers;
-    const tasks = mockTasks;
+    return SafeArea(
+      bottom: false,
+      child: RefreshIndicator(
+        onRefresh: _load,
+        color: DevTrackColors.ink,
+        backgroundColor: DevTrackColors.surface,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [
+            const Text(
+              'Team',
+              style: TextStyle(
+                color: DevTrackColors.ink,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            ..._buildBody(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Everything under the "Team" title: a loader or error until the first load
+  /// finishes, then the summary line, search field and member cards.
+  List<Widget> _buildBody() {
+    final members = _members;
+
+    if (members == null) {
+      return [
+        Padding(
+          padding: const EdgeInsets.only(top: 48),
+          child: Center(
+            child: _loadFailed
+                ? const Text(
+                    'Could not load the team. Pull down to try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: DevTrackColors.muted, fontSize: 14),
+                  )
+                : const CircularProgressIndicator(color: DevTrackColors.ink),
+          ),
+        ),
+      ];
+    }
 
     // A member "needs attention" when at least one of their tasks is overdue.
     final needsAttention = members
-        .where((m) => m.tasksFrom(tasks).countOf(SlaStatus.overdue) > 0)
+        .where((m) => m.tasksFrom(_tasks).countOf(SlaStatus.overdue) > 0)
         .length;
 
     // Search matches the name or role, ignoring case and surrounding spaces.
@@ -39,46 +124,34 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
                 m.role.toLowerCase().contains(q))
             .toList();
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        children: [
-          const Text(
-            'Team',
-            style: TextStyle(
-              color: DevTrackColors.ink,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${members.length} members · $needsAttention needs attention',
-            style: const TextStyle(color: DevTrackColors.muted, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          _SearchField(onChanged: (value) => setState(() => _query = value)),
-          for (final member in visible) ...[
-            const SizedBox(height: 12),
-            _MemberCard(
-              member: member,
-              tasks: member.tasksFrom(tasks),
-            ),
-          ],
-          if (visible.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 32),
-              child: Center(
-                child: Text(
-                  'No members match your search',
-                  style: TextStyle(color: DevTrackColors.muted, fontSize: 14),
-                ),
-              ),
-            ),
-        ],
+    return [
+      const SizedBox(height: 12),
+      Text(
+        '${members.length} members · $needsAttention needs attention',
+        style: const TextStyle(color: DevTrackColors.muted, fontSize: 13),
       ),
-    );
+      const SizedBox(height: 12),
+      _SearchField(onChanged: (value) => setState(() => _query = value)),
+      for (final member in visible) ...[
+        const SizedBox(height: 12),
+        _MemberCard(
+          member: member,
+          tasks: member.tasksFrom(_tasks),
+        ),
+      ],
+      if (visible.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 32),
+          child: Center(
+            child: Text(
+              members.isEmpty
+                  ? 'No team members yet'
+                  : 'No members match your search',
+              style: const TextStyle(color: DevTrackColors.muted, fontSize: 14),
+            ),
+          ),
+        ),
+    ];
   }
 }
 
@@ -127,7 +200,7 @@ class _MemberCard extends StatelessWidget {
   const _MemberCard({required this.member, required this.tasks});
 
   final Member member;
-  final List<Task> tasks;
+  final List<ProjectTask> tasks;
 
   @override
   Widget build(BuildContext context) {

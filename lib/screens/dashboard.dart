@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/mock_data.dart';
 import '../models/devtrack_models.dart';
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
 import '../widgets/filter_pill.dart';
 import '../widgets/task_tile.dart';
@@ -37,6 +38,11 @@ class _DashboardPageState extends State<DashboardPage> {
   final _notifications =
   ValueNotifier<List<AppNotification>>([]);
 
+  // storing tasks from the database
+  // (stays null until the first load finishes)
+  List<ProjectTask>? _tasks;
+  bool _loadFailed = false;
+
   // Set to false when the user closes the alert banner.
   bool _showAlert = true;
   _Scope _scope = _Scope.everyone;
@@ -54,8 +60,33 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
 
-    // loading notifications when the dashboard opens
+    // loading tasks and notifications when the dashboard opens
+    _loadTasks();
     loadNotifications();
+  }
+
+  // getting tasks from the database
+  Future<void> _loadTasks() async {
+    try {
+      final savedTasks = await DatabaseHelper.instance.getTasks();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _tasks = savedTasks;
+        _loadFailed = false;
+      });
+    } catch (error) {
+      debugPrint('Could not load tasks: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _loadFailed = true);
+    }
   }
 
   // getting notifications from the database
@@ -94,13 +125,8 @@ class _DashboardPageState extends State<DashboardPage> {
   // reloading tasks and notifications
   Future<void> _fetch() async {
     await TaskNotificationService.checkTaskDeadlines();
+    await _loadTasks();
     await loadNotifications();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {});
   }
 
   @override
@@ -129,9 +155,30 @@ class _DashboardPageState extends State<DashboardPage> {
   /// The scrollable dashboard content. Everything is computed from [tasks], so
   /// switching the scope updates the ring, counters, SLA cards and list together.
   Widget _buildContent() {
-    final List<Task> tasks = _scope == _Scope.mine
-        ? mockTasks.where((t) => t.assignee == currentUserFirstName).toList()
-        : mockTasks;
+    final savedTasks = _tasks;
+
+    // Nothing to count until the database answers.
+    if (savedTasks == null) {
+      return _loadFailed
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(32),
+              children: const [
+                Text(
+                  'Could not load tasks. Pull down to try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: DevTrackColors.muted, fontSize: 14),
+                ),
+              ],
+            )
+          : const Center(
+              child: CircularProgressIndicator(color: DevTrackColors.ink),
+            );
+    }
+
+    final List<ProjectTask> tasks = _scope == _Scope.mine
+        ? savedTasks.where((t) => t.assignee == currentUserFirstName).toList()
+        : savedTasks;
     final open = tasks.open;
     final overdue = tasks.countOf(SlaStatus.overdue);
     final atRisk = tasks.countOf(SlaStatus.atRisk);
@@ -735,7 +782,7 @@ class _DueTile extends StatelessWidget {
 class _SlaGrid extends StatelessWidget {
   const _SlaGrid({required this.tasks});
 
-  final List<Task> tasks;
+  final List<ProjectTask> tasks;
 
   static const _icons = {
     SlaStatus.onTrack: Icons.trending_up_rounded,
