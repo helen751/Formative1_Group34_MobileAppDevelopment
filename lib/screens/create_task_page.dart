@@ -8,10 +8,13 @@ import '../widgets/dark_button.dart';
 
 // page for creating a new task or editing one
 class CreateTaskPage extends StatefulWidget {
-  const CreateTaskPage({super.key, this.task});
+  const CreateTaskPage({super.key, this.task, this.initialAssignee});
 
   // null when creating a new task
   final ProjectTask? task;
+
+  // member picked already, e.g. from "Assign a task" on the team page
+  final String? initialAssignee;
 
   @override
   State<CreateTaskPage> createState() => _CreateTaskPageState();
@@ -26,7 +29,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  // team members from the database, for the assign to dropdown
+  List<Member> _members = [];
+
   String? _assignee;
+  String? _category;
   DateTime? _dueDate;
   TaskPriority _priority = TaskPriority.medium;
   TaskStage _stage = TaskStage.toDo;
@@ -34,13 +41,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   // showing a loader while saving
   bool _isSaving = false;
 
-  // team members from the database (null until loaded)
-  List<Member>? _members;
-
   bool get _isEditing => widget.task != null;
 
-  // getting the team members for the assignee list
-  Future<void> _loadMembers() async {
+  @override
+  void initState() {
+    super.initState();
+
+    // filling the form with the task being edited
+    final task = widget.task;
+
+    if (task != null) {
+      _titleController.text = task.title;
+      _descriptionController.text = task.description;
+      _assignee = task.assignee;
+      _category = task.category;
+      _dueDate = task.dueDate;
+      _priority = task.priority;
+      _stage = task.stage;
+    } else {
+      _assignee = widget.initialAssignee;
+    }
+
+    loadMembers();
+  }
+
+  // getting the team members from the database
+  Future<void> loadMembers() async {
     try {
       final members = await DatabaseHelper.instance.getMembers();
 
@@ -50,32 +76,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
       setState(() => _members = members);
     } catch (error) {
-      debugPrint('Could not load the team members: $error');
-
       if (!mounted) {
         return;
       }
 
-      setState(() => _members = const []);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _loadMembers();
-
-    // filling the form with the task being edited
-    final task = widget.task;
-
-    if (task != null) {
-      _titleController.text = task.title;
-      _descriptionController.text = task.description;
-      _assignee = task.assignee;
-      _dueDate = task.dueDate;
-      _priority = task.priority;
-      _stage = task.stage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not load team members')),
+      );
     }
   }
 
@@ -174,6 +181,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       assignee: _assignee!,
+      category: _category!,
       dueDate: _dueDate!,
       priority: _priority,
       stage: _stage,
@@ -227,13 +235,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     if (task == null) {
       return _titleController.text.trim().isNotEmpty ||
           _descriptionController.text.trim().isNotEmpty ||
-          _assignee != null ||
+          _assignee != widget.initialAssignee ||
+          _category != null ||
           _dueDate != null;
     }
 
     return _titleController.text.trim() != task.title ||
         _descriptionController.text.trim() != task.description ||
         _assignee != task.assignee ||
+        _category != task.category ||
         _dueDate != task.dueDate ||
         _priority != task.priority ||
         _stage != task.stage;
@@ -319,41 +329,61 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
                 const SizedBox(height: 8),
                 _IconField(
+                  icon: Icons.folder_outlined,
+                  iconColor: DevTrackColors.atRisk,
+                  label: 'Category',
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _category,
+                    hint: const Text('Select category'),
+                    decoration: _inputDecoration(null),
+                    borderRadius: BorderRadius.circular(14),
+                    items: [
+                      for (final category in taskCategories)
+                        DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        ),
+                      // keeping a category that is no longer in the list
+                      if (_category != null &&
+                          !taskCategories.contains(_category))
+                        DropdownMenuItem(
+                          value: _category,
+                          child: Text(_category!),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _category = value),
+                    validator: (value) =>
+                        value == null ? 'Please choose a category' : null,
+                  ),
+                ),
+                _IconField(
                   icon: Icons.person_outline_rounded,
                   iconColor: DevTrackColors.onTrack,
                   label: 'Assign To',
-                  child: _members == null
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: DevTrackColors.ink,
-                            ),
-                          ),
-                        )
-                      : DropdownButtonFormField<String>(
-                          // the dropdown breaks if the saved assignee isn't
-                          // in the list
-                          initialValue: _members!
-                                  .any((member) => member.shortName == _assignee)
-                              ? _assignee
-                              : null,
-                          hint: const Text('Select team member'),
-                          decoration: _inputDecoration(null),
-                          borderRadius: BorderRadius.circular(14),
-                          items: [
-                            for (final member in _members!)
-                              DropdownMenuItem(
-                                value: member.shortName,
-                                child: Text('${member.name} · ${member.role}'),
-                              ),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _assignee = value),
-                          validator: (value) => value == null
-                              ? 'Please choose a team member'
-                              : null,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _assignee,
+                    hint: const Text('Select team member'),
+                    decoration: _inputDecoration(null),
+                    borderRadius: BorderRadius.circular(14),
+                    items: [
+                      for (final member in _members)
+                        DropdownMenuItem(
+                          value: member.shortName,
+                          child: Text('${member.name} · ${member.role}'),
                         ),
+                      // keeping the old assignee when editing, even if they
+                      // are not in the list (or the list is still loading)
+                      if (_assignee != null &&
+                          !_members.any((m) => m.shortName == _assignee))
+                        DropdownMenuItem(
+                          value: _assignee,
+                          child: Text(_assignee!),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _assignee = value),
+                    validator: (value) =>
+                        value == null ? 'Please choose a team member' : null,
+                  ),
                 ),
                 _IconField(
                   icon: Icons.calendar_today_outlined,
