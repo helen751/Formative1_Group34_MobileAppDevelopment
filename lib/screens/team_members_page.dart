@@ -10,7 +10,13 @@ import '../widgets/status_badge.dart';
 /// Team tab: searchable list of member cards. Tapping a card opens that member's
 /// profile sheet. Members and tasks come from the database; pull down to reload.
 class TeamMembersPage extends StatefulWidget {
-  const TeamMembersPage({super.key});
+  const TeamMembersPage({super.key, this.onAssignTask, this.refreshCount = 0});
+
+  // opening the create task page for a member
+  final ValueChanged<String>? onAssignTask;
+
+  // goes up every time a task changes, so the counts reload
+  final int refreshCount;
 
   @override
   State<TeamMembersPage> createState() => _TeamMembersPageState();
@@ -32,6 +38,16 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
 
     // loading the team when the page opens
     _load();
+  }
+
+  @override
+  void didUpdateWidget(TeamMembersPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // reloading after a task was added or changed
+    if (widget.refreshCount != oldWidget.refreshCount) {
+      _load();
+    }
   }
 
   // getting the members and tasks from the database
@@ -137,6 +153,7 @@ class _TeamMembersPageState extends State<TeamMembersPage> {
         _MemberCard(
           member: member,
           tasks: member.tasksFrom(_tasks),
+          onAssignTask: widget.onAssignTask,
         ),
       ],
       if (visible.isEmpty)
@@ -197,10 +214,15 @@ class _SearchField extends StatelessWidget {
 /// Card with avatar, name, role, an overdue badge (only when needed) and a
 /// progress bar.
 class _MemberCard extends StatelessWidget {
-  const _MemberCard({required this.member, required this.tasks});
+  const _MemberCard({
+    required this.member,
+    required this.tasks,
+    this.onAssignTask,
+  });
 
   final Member member;
   final List<ProjectTask> tasks;
+  final ValueChanged<String>? onAssignTask;
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +237,12 @@ class _MemberCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () =>
-            showMemberProfileSheet(context, member: member, tasks: tasks),
+            showMemberProfileSheet(
+              context,
+              member: member,
+              tasks: tasks,
+              onAssignTask: onAssignTask,
+            ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

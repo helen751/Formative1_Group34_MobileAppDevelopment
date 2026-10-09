@@ -11,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const String databaseName = 'devtrack.db';
-  static const int databaseVersion = 5;
+  static const int databaseVersion = 6;
 
   static const String userTable = 'users';
   static const String taskTable = 'tasks';
@@ -89,6 +89,7 @@ class DatabaseHelper {
         is_completed INTEGER NOT NULL DEFAULT 0,
         priority TEXT NOT NULL DEFAULT 'medium',
         stage TEXT NOT NULL DEFAULT 'toDo',
+        category TEXT NOT NULL DEFAULT 'General',
         created_at TEXT NOT NULL
       )
     ''');
@@ -187,6 +188,23 @@ class DatabaseHelper {
       if (!columnNames.contains('stage')) {
         await database.execute(
           "ALTER TABLE $taskTable ADD COLUMN stage TEXT NOT NULL DEFAULT 'toDo'",
+        );
+      }
+    }
+
+    if (oldVersion < 6) {
+      final columns = await database.rawQuery(
+        'PRAGMA table_info($taskTable)',
+      );
+
+      final hasCategory = columns.any((column) {
+        return column['name'] == 'category';
+      });
+
+      // adding the category column
+      if (!hasCategory) {
+        await database.execute(
+          "ALTER TABLE $taskTable ADD COLUMN category TEXT NOT NULL DEFAULT 'General'",
         );
       }
     }
@@ -407,11 +425,21 @@ class DatabaseHelper {
   Future<int> deleteTask(int id) async {
     final db = await database;
 
-    return db.delete(
-      taskTable,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    // removing the task's notifications first, because they point to the
+    // task and the foreign key would block the delete
+    return db.transaction((txn) async {
+      await txn.delete(
+        notificationTable,
+        where: 'task_id = ?',
+        whereArgs: [id],
+      );
+
+      return txn.delete(
+        taskTable,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   // adding a notification

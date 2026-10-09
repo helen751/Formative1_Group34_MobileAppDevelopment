@@ -38,6 +38,16 @@ enum TaskStage {
   final String label;
 }
 
+// the areas of work a task can belong to
+const taskCategories = [
+  'UI/UX Design',
+  'Mobile Development',
+  'Backend (Local)',
+  'Quality Assurance',
+  'Documentation',
+  'General',
+];
+
 // creating the model for a task
 class ProjectTask {
   const ProjectTask({
@@ -46,6 +56,7 @@ class ProjectTask {
     required this.description,
     required this.assignee,
     required this.dueDate,
+    this.category = 'General',
     this.isCompleted = false,
     this.priority = TaskPriority.medium,
     this.stage = TaskStage.toDo,
@@ -56,6 +67,7 @@ class ProjectTask {
   final String description;
   final String assignee;
   final DateTime dueDate;
+  final String category;
   final bool isCompleted;
   final TaskPriority priority;
 
@@ -113,6 +125,16 @@ class ProjectTask {
     return 'Due in ${difference.inDays} days';
   }
 
+  // showing the due date like "10 Dec 2026"
+  String get dueDateLabel {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+
+    return '${dueDate.day} ${months[dueDate.month - 1]} ${dueDate.year}';
+  }
+
   // converting the task into a map for SQLite
   Map<String, Object?> toMap() {
     return {
@@ -121,6 +143,7 @@ class ProjectTask {
       'description': description,
       'assignee': assignee,
       'due_date': dueDate.toIso8601String(),
+      'category': category,
       'is_completed': isCompleted ? 1 : 0,
       'priority': priority.name,
       'stage': _savedStage.name,
@@ -146,6 +169,7 @@ class ProjectTask {
       description: map['description'] as String? ?? '',
       assignee: map['assignee'] as String,
       dueDate: DateTime.parse(map['due_date'] as String),
+      category: map['category'] as String? ?? 'General',
       isCompleted: isCompleted,
       priority: TaskPriority.values.asNameMap()[map['priority']] ??
           TaskPriority.medium,
@@ -169,6 +193,7 @@ class ProjectTask {
     String? description,
     String? assignee,
     DateTime? dueDate,
+    String? category,
     bool? isCompleted,
     TaskPriority? priority,
     TaskStage? stage,
@@ -179,6 +204,7 @@ class ProjectTask {
       description: description ?? this.description,
       assignee: assignee ?? this.assignee,
       dueDate: dueDate ?? this.dueDate,
+      category: category ?? this.category,
       isCompleted: isCompleted ?? this.isCompleted,
       priority: priority ?? this.priority,
       stage: stage ?? this.stage,

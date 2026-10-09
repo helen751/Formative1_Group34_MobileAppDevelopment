@@ -84,6 +84,7 @@ class DatabaseSeeder {
     final defaultTasks = <ProjectTask>[
       ProjectTask(
         title: 'Design login screen',
+        category: 'UI/UX Design',
         description: 'Design the login screen for the application',
         assignee: 'Emmanuel',
         dueDate: now.subtract(
@@ -92,6 +93,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Register form validation',
+        category: 'Mobile Development',
         description: 'Add validation to the registration form',
         assignee: 'Emmanuel',
         dueDate: now,
@@ -99,6 +101,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Dashboard UI',
+        category: 'UI/UX Design',
         description: 'Create the dashboard user interface',
         assignee: 'Derrick',
         dueDate: now.add(
@@ -107,6 +110,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Team members page',
+        category: 'Mobile Development',
         description: 'Create the team members page',
         assignee: 'Derrick',
         dueDate: now.add(
@@ -115,6 +119,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Set up SQLite tables',
+        category: 'Backend (Local)',
         description: 'Create the local database tables',
         assignee: 'Helen',
         dueDate: now.add(
@@ -123,6 +128,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Build create/edit task form',
+        category: 'Mobile Development',
         description: 'Create the form for adding and editing tasks',
         assignee: 'Christian',
         dueDate: now.add(
@@ -131,6 +137,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Task details layout',
+        category: 'UI/UX Design',
         description: 'Create the task details page layout',
         assignee: 'Helen',
         dueDate: now.add(

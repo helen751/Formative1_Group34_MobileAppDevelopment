@@ -5,12 +5,18 @@ import 'package:flutter/material.dart';
 import '../models/devtrack_models.dart';
 import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
-import '../widgets/filter_pill.dart';
 import '../widgets/task_tile.dart';
 
 import '../database/database_helper.dart';
 import '../widgets/notification_sheet.dart';
 import '../services/task_notification_service.dart';
+import 'task_details_page.dart';
+
+// there is no login session yet, so the signed in user is fixed for now
+const currentUserFirstName = 'Derrick';
+
+// project name shown on the progress card
+const projectName = 'DevTrack';
 
 /// Whose tasks the dashboard counts: the whole team or only the signed-in user.
 enum _Scope { everyone, mine }
@@ -22,6 +28,7 @@ class DashboardPage extends StatefulWidget {
     super.key,
     this.onSeeAll,
     this.onNewTask,
+    this.onChanged,
     this.refreshCount = 0,
   });
 
@@ -30,6 +37,9 @@ class DashboardPage extends StatefulWidget {
 
   /// Called when the floating "New task" button is tapped.
   final VoidCallback? onNewTask;
+
+  // telling the other tabs that a task was changed from here
+  final VoidCallback? onChanged;
 
   // goes up every time a task is added, so the dashboard reloads
   final int refreshCount;
@@ -54,8 +64,8 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _showAlert = true;
   _Scope _scope = _Scope.everyone;
 
-  /// Status filter for the "Needs attention" list; null shows all open tasks.
-  SlaStatus? _filter;
+  // how many recent tasks the dashboard shows
+  static const _recentCount = 5;
 
   @override
   void dispose() {
@@ -70,6 +80,17 @@ class _DashboardPageState extends State<DashboardPage> {
     // loading tasks and notifications when the dashboard opens
     _loadTasks();
     loadNotifications();
+  }
+
+  @override
+  void didUpdateWidget(DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // reloading after a new task was added
+    if (widget.refreshCount != oldWidget.refreshCount) {
+      _loadTasks();
+      loadNotifications();
+    }
   }
 
   // getting tasks from the database
@@ -94,6 +115,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
       setState(() => _loadFailed = true);
     }
+  }
+
+  // opening a task's details, then reloading in case it was changed
+  Future<void> _openDetails(ProjectTask task) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TaskDetailsPage(task: task)),
+    );
+
+    await _loadTasks();
+    widget.onChanged?.call();
   }
 
   // getting notifications from the database
@@ -186,21 +218,13 @@ class _DashboardPageState extends State<DashboardPage> {
     final List<ProjectTask> tasks = _scope == _Scope.mine
         ? savedTasks.where((t) => t.assignee == currentUserFirstName).toList()
         : savedTasks;
-    final open = tasks.open;
     final overdue = tasks.countOf(SlaStatus.overdue);
     final atRisk = tasks.countOf(SlaStatus.atRisk);
 
-    // Open tasks for the list, most urgent first and narrowed by the selected
-    // chip. Completed tasks are never listed here.
-    final visible = [
-      for (final status in const [
-        SlaStatus.overdue,
-        SlaStatus.atRisk,
-        SlaStatus.onTrack,
-      ])
-        if (_filter == null || _filter == status)
-          ...open.where((t) => t.status == status),
-    ];
+    // the most recently added tasks (a higher id means added later)
+    final recent = [...tasks]
+      ..sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+    final visible = recent.take(_recentCount).toList();
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -254,58 +278,46 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 16),
           _SlaGrid(tasks: tasks),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Needs attention', style: _sectionTitle),
-              ),
+          const Text('Recent tasks', style: _sectionTitle),
+          if (visible.isEmpty) ...[
+            const SizedBox(height: 16),
+            const _EmptyState(),
+          ] else ...[
+            for (final task in visible) ...[
+              const SizedBox(height: 12),
               GestureDetector(
-                onTap: widget.onSeeAll,
-                child: const Text(
-                  'See all',
-                  style: TextStyle(
-                    color: DevTrackColors.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                onTap: () => _openDetails(task),
+                child: TaskTile(
+                  task: task,
+                  subtitle: '${task.dueLabel} · ${task.assignee}',
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          // Two spaces before each count keep the label and number visually apart.
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilterPill(
-                label: 'All  ${open.length}',
-                selected: _filter == null,
-                onTap: () => setState(() => _filter = null),
-              ),
-              FilterPill(
-                label: 'Overdue  $overdue',
-                selected: _filter == SlaStatus.overdue,
-                onTap: () => setState(() => _filter = SlaStatus.overdue),
-              ),
-              FilterPill(
-                label: 'At Risk  $atRisk',
-                selected: _filter == SlaStatus.atRisk,
-                onTap: () => setState(() => _filter = SlaStatus.atRisk),
-              ),
-            ],
-          ),
-          if (visible.isEmpty) ...[
             const SizedBox(height: 16),
-            _EmptyState(filter: _filter),
-          ] else
-            for (final task in visible) ...[
-              const SizedBox(height: 16),
-              TaskTile(
-                task: task,
-                subtitle: '${task.dueLabel} · ${task.assignee}',
+            // going to the tasks tab for the full list
+            OutlinedButton.icon(
+              onPressed: widget.onSeeAll,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: Text(
+                tasks.length > _recentCount
+                    ? 'Show more (${tasks.length - _recentCount} more)'
+                    : 'Show all tasks',
               ),
-            ],
+              style: OutlinedButton.styleFrom(
+                foregroundColor: DevTrackColors.ink,
+                backgroundColor: DevTrackColors.surface,
+                side: const BorderSide(color: DevTrackColors.border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -881,17 +893,9 @@ class _SlaCard extends StatelessWidget {
   }
 }
 
-/// Shown when the selected filter has no tasks.
+// shown when there are no tasks yet
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.filter});
-
-  final SlaStatus? filter;
-
-  String get _message => switch (filter) {
-        SlaStatus.overdue => 'No overdue tasks right now. Nice work.',
-        SlaStatus.atRisk => 'No at-risk tasks right now. Nice work.',
-        _ => 'No open tasks right now. Nice work.',
-      };
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -923,10 +927,10 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            _message,
+          const Text(
+            'No tasks yet. Tap New task to add the first one.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: DevTrackColors.muted, fontSize: 13),
+            style: TextStyle(color: DevTrackColors.muted, fontSize: 13),
           ),
         ],
       ),
