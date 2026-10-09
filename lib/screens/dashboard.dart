@@ -18,13 +18,21 @@ enum _Scope { everyone, mine }
 /// Dashboard tab: project progress, due counters, SLA overview and the tasks that
 /// need attention. Owns its refresh, scope and filter state.
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key, this.onSeeAll, this.onNewTask});
+  const DashboardPage({
+    super.key,
+    this.onSeeAll,
+    this.onNewTask,
+    this.refreshCount = 0,
+  });
 
   /// Called when "See all" is tapped (switches to the Tasks tab).
   final VoidCallback? onSeeAll;
 
   /// Called when the floating "New task" button is tapped.
   final VoidCallback? onNewTask;
+
+  // goes up every time a task is added, so the dashboard reloads
+  final int refreshCount;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();

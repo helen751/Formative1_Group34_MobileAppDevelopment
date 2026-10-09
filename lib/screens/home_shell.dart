@@ -22,6 +22,9 @@ class _HomeShellState extends State<HomeShell> {
 
   int _index = 0;
 
+  // telling the dashboard to reload its tasks
+  int _refreshCount = 0;
+
   void _select(int index) => setState(() => _index = index);
 
   // opening the create task page
@@ -33,6 +36,8 @@ class _HomeShellState extends State<HomeShell> {
     if (created == null || !mounted) {
       return;
     }
+
+    setState(() => _refreshCount++);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('"${created.title}" assigned to ${created.assignee}')),
@@ -50,6 +55,7 @@ class _HomeShellState extends State<HomeShell> {
           DashboardPage(
             onSeeAll: () => _select(_tasksTab),
             onNewTask: _onNewTask,
+            refreshCount: _refreshCount,
           ),
           const _ComingSoon(title: 'Tasks'),
           const TeamMembersPage(),
