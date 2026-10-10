@@ -4,11 +4,12 @@ import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
 import 'create_task_page.dart';
 import 'dashboard.dart';
+import 'task_list_page.dart';
 import 'team_members_page.dart';
 
 /// Main app shell with the DevTrack bottom navigation.
 ///
-/// Tasks and Stats are placeholders until those modules are plugged in.
+/// Stats is a placeholder until that module is plugged in.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -22,17 +23,27 @@ class _HomeShellState extends State<HomeShell> {
 
   int _index = 0;
 
+  // goes up when tasks change, so every tab reloads
+  int _refreshCount = 0;
+
   void _select(int index) => setState(() => _index = index);
 
-  // opening the create task page
-  Future<void> _onNewTask() async {
+  // telling every tab to reload its tasks
+  void _onTasksChanged() => setState(() => _refreshCount++);
+
+  // opening the create task page, with a member already picked if given
+  Future<void> _onNewTask({String? assignee}) async {
     final created = await Navigator.of(context).push<ProjectTask>(
-      MaterialPageRoute(builder: (_) => const CreateTaskPage()),
+      MaterialPageRoute(
+        builder: (_) => CreateTaskPage(initialAssignee: assignee),
+      ),
     );
 
     if (created == null || !mounted) {
       return;
     }
+
+    _onTasksChanged();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('"${created.title}" assigned to ${created.assignee}')),
@@ -50,9 +61,18 @@ class _HomeShellState extends State<HomeShell> {
           DashboardPage(
             onSeeAll: () => _select(_tasksTab),
             onNewTask: _onNewTask,
+            onChanged: _onTasksChanged,
+            refreshCount: _refreshCount,
           ),
-          const _ComingSoon(title: 'Tasks'),
-          const TeamMembersPage(),
+          TaskListPage(
+            onNewTask: _onNewTask,
+            onChanged: _onTasksChanged,
+            refreshCount: _refreshCount,
+          ),
+          TeamMembersPage(
+            onAssignTask: (member) => _onNewTask(assignee: member),
+            refreshCount: _refreshCount,
+          ),
           const _ComingSoon(title: 'Stats'),
         ],
       ),

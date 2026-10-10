@@ -13,6 +13,7 @@ Future<void> showMemberProfileSheet(
   BuildContext context, {
   required Member member,
   required List<ProjectTask> tasks,
+  ValueChanged<String>? onAssignTask,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -22,7 +23,11 @@ Future<void> showMemberProfileSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => MemberProfileSheet(member: member, tasks: tasks),
+    builder: (_) => MemberProfileSheet(
+      member: member,
+      tasks: tasks,
+      onAssignTask: onAssignTask,
+    ),
   );
 }
 
@@ -32,9 +37,13 @@ class MemberProfileSheet extends StatelessWidget {
     super.key,
     required this.member,
     required this.tasks,
+    this.onAssignTask,
   });
 
   final Member member;
+
+  // opening the create task page with this member picked
+  final ValueChanged<String>? onAssignTask;
 
   /// Tasks assigned to [member].
   final List<ProjectTask> tasks;
@@ -127,17 +136,10 @@ class MemberProfileSheet extends StatelessWidget {
               DarkButton(
                 icon: Icons.add,
                 label: 'Assign a task',
-                // Placeholder until task assignment exists. Grab the messenger
-                // before popping, because the sheet's context is gone afterwards.
+                // closing the sheet first, then opening the form
                 onPressed: () {
-                  final messenger = ScaffoldMessenger.of(context);
                   Navigator.of(context).pop();
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Assigning tasks to ${member.shortName} is coming soon'),
-                    ),
-                  );
+                  onAssignTask?.call(member.shortName);
                 },
               ),
             ],
