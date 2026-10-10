@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../data/mock_data.dart';
 import '../database/database_helper.dart';
 import '../models/project_task.dart';

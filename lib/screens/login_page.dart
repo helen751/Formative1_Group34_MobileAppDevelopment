@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:formative1/theme/devtrack_theme.dart';
 import '../app_colors.dart';
+import './signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -27,6 +29,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _openSignUp() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SignUpPage()),
+    );
+    _emailCtrl.clear();
+    _passCtrl.clear();
+  }
+
   OutlineInputBorder _border(Color color, [double width = 1]) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
@@ -37,15 +48,17 @@ class _LoginPageState extends State<LoginPage> {
   InputDecoration _fieldStyle(String hint, IconData icon, {Widget? suffix}) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.black87),
+      hintStyle: const TextStyle(color: DevTrackColors.muted),
+      prefixIcon: Icon(icon, color: DevTrackColors.ink),
       suffixIcon: suffix,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: DevTrackColors.surface,
       contentPadding: const EdgeInsets.symmetric(vertical: 18),
-      enabledBorder: _border(Colors.grey.shade300),
-      focusedBorder: _border(kDarkOrange, 2),
-      errorBorder: _border(Colors.red),
-      focusedErrorBorder: _border(Colors.red, 2),
+      enabledBorder: _border(DevTrackColors.border),
+      focusedBorder: _border(DevTrackColors.ink, 2),
+      errorBorder: _border(DevTrackColors.overdue),
+      focusedErrorBorder: _border(DevTrackColors.overdue, 2),
+      errorStyle: const TextStyle(color: DevTrackColors.overdue),
     );
   }
 
@@ -72,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: DevTrackColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -90,19 +103,20 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
-                      color: Color(0xFF111827),
+                      color: DevTrackColors.ink,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     'Plan. Track. Deliver Together.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 16, color: DevTrackColors.muted),
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    cursorColor: DevTrackColors.ink,
                     decoration: _fieldStyle('Email', Icons.mail_outline),
                     validator: _checkEmail,
                   ),
@@ -111,6 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _passCtrl,
                     obscureText: _hidePassword,
                     textInputAction: TextInputAction.done,
+                    cursorColor: DevTrackColors.ink,
                     onFieldSubmitted: (_) => _submit(),
                     decoration: _fieldStyle(
                       'Password',
@@ -120,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                           _hidePassword
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: Colors.grey,
+                          color: DevTrackColors.muted,
                         ),
                         onPressed: () =>
                             setState(() => _hidePassword = !_hidePassword),
@@ -135,8 +150,8 @@ class _LoginPageState extends State<LoginPage> {
                     child: ElevatedButton(
                       onPressed: _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: kDarkOrange,
-                        foregroundColor: Colors.white,
+                        backgroundColor: DevTrackColors.ink,
+                        foregroundColor: DevTrackColors.surface,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -155,16 +170,16 @@ class _LoginPageState extends State<LoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         "Don't have an account? ",
-                        style: TextStyle(color: Colors.grey.shade700),
+                        style: TextStyle(color: DevTrackColors.muted),
                       ),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: _openSignUp,
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(
-                            color: kDarkOrange,
+                            color: DevTrackColors.onTrack,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
