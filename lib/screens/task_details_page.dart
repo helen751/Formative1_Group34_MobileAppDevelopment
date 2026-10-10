@@ -54,6 +54,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
     setState(() {
       task = task.copyWith(
         isCompleted: newCompletedStatus,
+        stage: newCompletedStatus ? TaskStage.done : TaskStage.toDo,
       );
 
       isUpdating = false;
@@ -294,6 +295,24 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
               icon: Icons.person_outline,
               label: 'Assigned to',
               value: task.assignee,
+            ),
+
+            detailRow(
+              icon: Icons.folder_outlined,
+              label: 'Category',
+              value: task.category,
+            ),
+
+            detailRow(
+              icon: Icons.priority_high_rounded,
+              label: 'Priority',
+              value: task.priority.label,
+            ),
+
+            detailRow(
+              icon: Icons.format_list_bulleted_rounded,
+              label: 'Progress',
+              value: task.stage.label,
             ),
 
             detailRow(

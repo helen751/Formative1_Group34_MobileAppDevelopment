@@ -5,6 +5,7 @@ import 'services/task_notification_service.dart';
 
 import 'screens/home_shell.dart';
 import 'theme/devtrack_theme.dart';
+import 'screens/login_page.dart';
 
 
 Future<void> main() async {
