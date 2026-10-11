@@ -69,18 +69,29 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     try {
       final members = await DatabaseHelper.instance.getMembers();
 
+      // removing members with the same short names
+      final uniqueMembers = <String, Member>{};
+
+      for (final member in members) {
+        uniqueMembers[member.shortName] = member;
+      }
+
       if (!mounted) {
         return;
       }
 
-      setState(() => _members = members);
+      setState(() {
+        _members = uniqueMembers.values.toList();
+      });
     } catch (error) {
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not load team members')),
+        const SnackBar(
+          content: Text('Could not load team members'),
+        ),
       );
     }
   }
