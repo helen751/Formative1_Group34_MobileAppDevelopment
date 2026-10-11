@@ -11,6 +11,14 @@ import '../widgets/task_tile.dart';
 import '../database/database_helper.dart';
 import '../widgets/notification_sheet.dart';
 import '../services/task_notification_service.dart';
+<<<<<<< Updated upstream
+=======
+import 'task_details_page.dart';
+
+
+// project name shown on the progress card
+const projectName = 'DevTrack';
+>>>>>>> Stashed changes
 
 /// Whose tasks the dashboard counts: the whole team or only the signed-in user.
 enum _Scope { everyone, mine }
@@ -18,7 +26,18 @@ enum _Scope { everyone, mine }
 /// Dashboard tab: project progress, due counters, SLA overview and the tasks that
 /// need attention. Owns its refresh, scope and filter state.
 class DashboardPage extends StatefulWidget {
+<<<<<<< Updated upstream
   const DashboardPage({super.key, this.onSeeAll, this.onNewTask});
+=======
+  const DashboardPage({
+    super.key,
+    this.onSeeAll,
+    this.user,
+    this.onNewTask,
+    this.onChanged,
+    this.refreshCount = 0,
+  });
+>>>>>>> Stashed changes
 
   /// Called when "See all" is tapped (switches to the Tasks tab).
   final VoidCallback? onSeeAll;
@@ -26,11 +45,31 @@ class DashboardPage extends StatefulWidget {
   /// Called when the floating "New task" button is tapped.
   final VoidCallback? onNewTask;
 
+<<<<<<< Updated upstream
+=======
+  // telling the other tabs that a task was changed from here
+  final VoidCallback? onChanged;
+
+  // goes up every time a task is added, so the dashboard reloads
+  final int refreshCount;
+
+  // storing the logged-in user
+  final Map<String, Object?>? user;
+
+>>>>>>> Stashed changes
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+
+  // getting the user's first name
+  String get currentUserFirstName {
+    final fullName =
+        widget.user?['full_name'] as String? ?? 'Guest';
+
+    return fullName.trim().split(' ').first;
+  }
 
   // Shared with the notifications sheet so reading items there clears the bell dot.
   // storing notifications from the database

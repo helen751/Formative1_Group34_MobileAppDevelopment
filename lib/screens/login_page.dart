@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+<<<<<<< Updated upstream
+=======
+import './signup_page.dart';
+// importing the database helper
+import '../database/database_helper.dart';
+import 'home_shell.dart';
+>>>>>>> Stashed changes
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,6 +20,8 @@ class _LoginPageState extends State<LoginPage> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _hidePassword = true;
+  // checking if the login is in progress
+  bool _isLoggingIn = false;
 
   @override
   void dispose() {
@@ -21,10 +30,53 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus();
+  // checking the login details
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
     }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isLoggingIn = true;
+    });
+
+    final user = await DatabaseHelper.instance.loginUser(
+      email: _emailCtrl.text,
+      password: _passCtrl.text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (user == null) {
+      setState(() {
+        _isLoggingIn = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Incorrect email or password'),
+        ),
+      );
+
+      return;
+    }
+
+    // opening the dashboard
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return HomeShell(
+            user: user,
+          );
+        },
+      ),
+          (route) => false,
+    );
   }
 
   OutlineInputBorder _border(Color color, [double width = 1]) {

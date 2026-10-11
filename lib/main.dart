@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
       title: 'DevTrack',
       debugShowCheckedModeBanner: false,
       theme: DevTrackTheme.light,
-      home: const HomeShell(),
+      home: const LoginPage(),
     );
   }
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
 
+// importing the database helper
+import '../database/database_helper.dart';
+
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -16,6 +19,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final _confirmCtrl = TextEditingController();
   bool _hidePassword = true;
   bool _hideConfirm = true;
+  // checking if the account is being created
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -26,9 +31,86 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+<<<<<<< Updated upstream
   void _submit() {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).unfocus();
+=======
+  // creating a new account
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final email = _emailCtrl.text.trim().toLowerCase();
+
+    // checking if the email already exists
+    final existingUser =
+    await DatabaseHelper.instance.getUserByEmail(email);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (existingUser != null) {
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'An account with this email already exists',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    try {
+      // saving the user in SQLite
+      await DatabaseHelper.instance.insertUser(
+        fullName: _nameCtrl.text.trim(),
+        email: email,
+        password: _passCtrl.text
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created successfully'),
+        ),
+      );
+
+      // returning to the login page
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Account could not be created',
+          ),
+        ),
+      );
+>>>>>>> Stashed changes
     }
   }
 
@@ -185,7 +267,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _submit,
+                      onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kDarkOrange,
                         foregroundColor: Colors.white,
@@ -194,7 +276,16 @@ class _SignUpPageState extends State<SignUpPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
+                      child: _isSubmitting
+                          ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: DevTrackColors.surface,
+                        ),
+                      )
+                          : const Text(
                         'Create Account',
                         style: TextStyle(
                           fontSize: 18,
