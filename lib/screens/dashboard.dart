@@ -13,8 +13,6 @@ import '../widgets/notification_sheet.dart';
 import '../services/task_notification_service.dart';
 import 'task_details_page.dart';
 
-// there is no login session yet, so the signed in user is fixed for now
-const currentUserFirstName = 'Derrick';
 
 // project name shown on the progress card
 const projectName = 'DevTrack';
@@ -28,6 +26,7 @@ class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
     this.onSeeAll,
+    this.user,
     this.onNewTask,
     this.onChanged,
     this.refreshCount = 0,
@@ -45,11 +44,22 @@ class DashboardPage extends StatefulWidget {
   // goes up every time a task is added, so the dashboard reloads
   final int refreshCount;
 
+  // storing the logged-in user
+  final Map<String, Object?>? user;
+
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+
+  // getting the user's first name
+  String get currentUserFirstName {
+    final fullName =
+        widget.user?['full_name'] as String? ?? 'Guest';
+
+    return fullName.trim().split(' ').first;
+  }
 
   // Shared with the notifications sheet so reading items there clears the bell dot.
   // storing notifications from the database

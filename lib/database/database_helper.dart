@@ -303,6 +303,30 @@ class DatabaseHelper {
     return users.first;
   }
 
+// checking the user's login details
+  Future<Map<String, Object?>?> loginUser({
+    required String email,
+    required String password,
+  }) async {
+    final db = await database;
+
+    final users = await db.query(
+      userTable,
+      where: 'email = ? AND password = ?',
+      whereArgs: [
+        email.toLowerCase().trim(),
+        password,
+      ],
+      limit: 1,
+    );
+
+    if (users.isEmpty) {
+      return null;
+    }
+
+    return users.first;
+  }
+
   // updating a user
   Future<int> updateUser({
     required int id,

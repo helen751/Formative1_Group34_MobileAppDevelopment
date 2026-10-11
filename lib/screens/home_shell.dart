@@ -6,15 +6,22 @@ import 'create_task_page.dart';
 import 'dashboard.dart';
 import 'task_list_page.dart';
 import 'team_members_page.dart';
+import 'statistics_page.dart';
 
 /// Main app shell with the DevTrack bottom navigation.
-///
-/// Stats is a placeholder until that module is plugged in.
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({
+    super.key,
+    required this.user,
+  });
+
+  // storing the logged-in user
+  final Map<String, Object?> user;
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  State<HomeShell> createState() {
+    return _HomeShellState();
+  }
 }
 
 class _HomeShellState extends State<HomeShell> {
@@ -59,6 +66,7 @@ class _HomeShellState extends State<HomeShell> {
         index: _index,
         children: [
           DashboardPage(
+            user: widget.user,
             onSeeAll: () => _select(_tasksTab),
             onNewTask: _onNewTask,
             onChanged: _onTasksChanged,
@@ -73,7 +81,9 @@ class _HomeShellState extends State<HomeShell> {
             onAssignTask: (member) => _onNewTask(assignee: member),
             refreshCount: _refreshCount,
           ),
-          const _ComingSoon(title: 'Stats'),
+          StatisticsPage(
+            refreshCount: _refreshCount,
+          ),
         ],
       ),
       bottomNavigationBar: _BottomNav(currentIndex: _index, onTap: _select),
@@ -174,23 +184,6 @@ class _NavItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Stand-in for tabs whose module isn't plugged in yet.
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '$title – coming soon',
-        style: const TextStyle(color: DevTrackColors.muted, fontSize: 16),
       ),
     );
   }
