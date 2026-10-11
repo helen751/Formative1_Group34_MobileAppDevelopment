@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../app_colors.dart';
+import 'package:formative1/theme/devtrack_theme.dart';
 
 // importing the database helper
 import '../database/database_helper.dart';
@@ -31,11 +31,6 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-<<<<<<< Updated upstream
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      FocusScope.of(context).unfocus();
-=======
   // creating a new account
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
@@ -110,7 +105,6 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         ),
       );
->>>>>>> Stashed changes
     }
   }
 
@@ -124,15 +118,17 @@ class _SignUpPageState extends State<SignUpPage> {
   InputDecoration _fieldStyle(String hint, IconData icon, {Widget? suffix}) {
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.black87),
+      hintStyle: const TextStyle(color: DevTrackColors.muted),
+      prefixIcon: Icon(icon, color: DevTrackColors.ink),
       suffixIcon: suffix,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: DevTrackColors.surface,
       contentPadding: const EdgeInsets.symmetric(vertical: 18),
-      enabledBorder: _border(Colors.grey.shade300),
-      focusedBorder: _border(kDarkOrange, 2),
-      errorBorder: _border(Colors.red),
-      focusedErrorBorder: _border(Colors.red, 2),
+      enabledBorder: _border(DevTrackColors.border),
+      focusedBorder: _border(DevTrackColors.ink, 2),
+      errorBorder: _border(DevTrackColors.overdue),
+      focusedErrorBorder: _border(DevTrackColors.overdue, 2),
+      errorStyle: const TextStyle(color: DevTrackColors.overdue),
     );
   }
 
@@ -140,7 +136,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return IconButton(
       icon: Icon(
         hidden ? Icons.visibility_off : Icons.visibility,
-        color: Colors.grey,
+        color: DevTrackColors.muted,
       ),
       onPressed: onPressed,
     );
@@ -189,7 +185,7 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: DevTrackColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -207,19 +203,20 @@ class _SignUpPageState extends State<SignUpPage> {
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
-                      color: Color(0xFF111827),
+                      color: DevTrackColors.ink,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Text(
+                  const Text(
                     'Start tracking projects with your team.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 16, color: DevTrackColors.muted),
                   ),
                   const SizedBox(height: 28),
                   TextFormField(
                     controller: _nameCtrl,
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.next,
+                    cursorColor: DevTrackColors.ink,
                     decoration: _fieldStyle('Full name', Icons.person_outline),
                     validator: _checkName,
                   ),
@@ -228,6 +225,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    cursorColor: DevTrackColors.ink,
                     decoration: _fieldStyle('Email', Icons.mail_outline),
                     validator: _checkEmail,
                   ),
@@ -236,6 +234,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _passCtrl,
                     obscureText: _hidePassword,
                     textInputAction: TextInputAction.next,
+                    cursorColor: DevTrackColors.ink,
                     decoration: _fieldStyle(
                       'Password',
                       Icons.lock_outline,
@@ -251,6 +250,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _confirmCtrl,
                     obscureText: _hideConfirm,
                     textInputAction: TextInputAction.done,
+                    cursorColor: DevTrackColors.ink,
                     onFieldSubmitted: (_) => _submit(),
                     decoration: _fieldStyle(
                       'Confirm password',
@@ -269,8 +269,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: kDarkOrange,
-                        foregroundColor: Colors.white,
+                        backgroundColor: DevTrackColors.ink,
+                        foregroundColor: DevTrackColors.surface,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -298,16 +298,16 @@ class _SignUpPageState extends State<SignUpPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'Already have an account? ',
-                        style: TextStyle(color: Colors.grey.shade700),
+                        style: TextStyle(color: DevTrackColors.muted),
                       ),
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: const Text(
                           'Sign In',
                           style: TextStyle(
-                            color: kDarkOrange,
+                            color: DevTrackColors.onTrack,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
