@@ -45,7 +45,7 @@ class DatabaseHelper {
       onConfigure: _configureDatabase,
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
-      onOpen: _turnOnForeignKeys,
+      onOpen: _repairDatabase,
     );
   }
 
@@ -107,6 +107,7 @@ class DatabaseHelper {
         is_completed INTEGER NOT NULL DEFAULT 0,
         priority TEXT NOT NULL DEFAULT 'medium',
         stage TEXT NOT NULL DEFAULT 'toDo',
+        category TEXT NOT NULL DEFAULT 'General',
         created_at TEXT NOT NULL
       )
     ''');
@@ -240,6 +241,99 @@ class DatabaseHelper {
         );
       }
     }
+  }
+
+  // making sure every table has all the columns the code uses.
+  // this runs on every open, so a database that skipped an upgrade step
+  // (for example when two branches used the same version number) is fixed
+  Future<void> _repairDatabase(Database database) async {
+    await _createUserTable(database);
+    await _createTaskTable(database);
+    await _createNotificationTable(database);
+
+    final userColumns = await _columnNames(database, userTable);
+
+    if (userColumns.contains('password_hash') &&
+        !userColumns.contains('password')) {
+      await _renamePasswordColumn(database);
+    }
+
+    // columns added to the tasks table after it was first created
+    const taskColumns = {
+      'created_at': 'TEXT',
+      'priority': "TEXT NOT NULL DEFAULT 'medium'",
+      'stage': "TEXT NOT NULL DEFAULT 'toDo'",
+      'category': "TEXT NOT NULL DEFAULT 'General'",
+    };
+
+    await _addMissingColumns(database, taskTable, taskColumns);
+
+    await _addMissingColumns(
+      database,
+      notificationTable,
+      const {'task_id': 'INTEGER'},
+    );
+
+    await _turnOnForeignKeys(database);
+  }
+
+  // getting the column names of a table
+  Future<Set<String>> _columnNames(Database database, String table) async {
+    final columns = await database.rawQuery('PRAGMA table_info($table)');
+
+    return columns.map((column) => column['name'] as String).toSet();
+  }
+
+  // adding each column that the table does not have yet
+  Future<void> _addMissingColumns(
+    Database database,
+    String table,
+    Map<String, String> columns,
+  ) async {
+    final existing = await _columnNames(database, table);
+
+    for (final entry in columns.entries) {
+      if (!existing.contains(entry.key)) {
+        await database.execute(
+          'ALTER TABLE $table ADD COLUMN ${entry.key} ${entry.value}',
+        );
+      }
+    }
+  }
+
+  // same rebuild as the version 6 upgrade, for databases that skipped it
+  Future<void> _renamePasswordColumn(Database database) async {
+    const newUserTable = 'users_new';
+
+    // notifications point to users, so the foreign key check is paused
+    // while the old table is dropped
+    await database.execute('PRAGMA foreign_keys = OFF');
+
+    await database.transaction((txn) async {
+      await txn.execute('DROP TABLE IF EXISTS $newUserTable');
+
+      await txn.execute('''
+        CREATE TABLE $newUserTable (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          full_name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'Member',
+          created_at TEXT NOT NULL
+        )
+      ''');
+
+      await txn.execute('''
+        INSERT INTO $newUserTable
+          (id, full_name, email, password, role, created_at)
+        SELECT id, full_name, email, password_hash, role, created_at
+        FROM $userTable
+      ''');
+
+      await txn.execute('DROP TABLE $userTable');
+
+      await txn.execute('ALTER TABLE $newUserTable RENAME TO $userTable');
+    });
   }
 
   // adding a new user
