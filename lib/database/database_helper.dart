@@ -11,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const String databaseName = 'devtrack.db';
-  static const int databaseVersion = 4;
+  static const int databaseVersion = 6;
 
   static const String userTable = 'users';
   static const String taskTable = 'tasks';
@@ -45,11 +45,26 @@ class DatabaseHelper {
       onConfigure: _configureDatabase,
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
+      onOpen: _turnOnForeignKeys,
     );
   }
 
   // allowing relationships between tables
   Future<void> _configureDatabase(Database database) async {
+    final versionResult = await database.rawQuery('PRAGMA user_version');
+    final savedVersion = Sqflite.firstIntValue(versionResult) ?? 0;
+
+    // version 6 rebuilds the users table, which only works with foreign
+    // keys off (they can't be switched inside the upgrade)
+    final needsUsersRebuild = savedVersion > 0 && savedVersion < 6;
+
+    await database.execute(
+      'PRAGMA foreign_keys = ${needsUsersRebuild ? 'OFF' : 'ON'}',
+    );
+  }
+
+  // foreign keys go back on once the upgrade is done
+  Future<void> _turnOnForeignKeys(Database database) async {
     await database.execute('PRAGMA foreign_keys = ON');
   }
 
@@ -64,13 +79,16 @@ class DatabaseHelper {
   }
 
   // creating the users table
-  Future<void> _createUserTable(Database database) async {
+  Future<void> _createUserTable(
+    Database database, {
+    String tableName = userTable,
+  }) async {
     await database.execute('''
-      CREATE TABLE IF NOT EXISTS $userTable (
+      CREATE TABLE IF NOT EXISTS $tableName (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         full_name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
+        password TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'Member',
         created_at TEXT NOT NULL
       )
@@ -87,6 +105,8 @@ class DatabaseHelper {
         assignee TEXT NOT NULL,
         due_date TEXT NOT NULL,
         is_completed INTEGER NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL DEFAULT 'medium',
+        stage TEXT NOT NULL DEFAULT 'toDo',
         created_at TEXT NOT NULL
       )
     ''');
@@ -165,13 +185,68 @@ class DatabaseHelper {
         );
       }
     }
+
+    if (oldVersion < 5) {
+      final columns = await database.rawQuery(
+        'PRAGMA table_info($taskTable)',
+      );
+
+      final columnNames = columns.map((column) {
+        return column['name'];
+      }).toSet();
+
+      // adding priority and stage columns
+      if (!columnNames.contains('priority')) {
+        await database.execute(
+          "ALTER TABLE $taskTable ADD COLUMN priority TEXT NOT NULL DEFAULT 'medium'",
+        );
+      }
+
+      if (!columnNames.contains('stage')) {
+        await database.execute(
+          "ALTER TABLE $taskTable ADD COLUMN stage TEXT NOT NULL DEFAULT 'toDo'",
+        );
+      }
+    }
+
+    // version 6: password_hash is now called password
+    if (oldVersion < 6) {
+      final columns = await database.rawQuery(
+        'PRAGMA table_info($userTable)',
+      );
+
+      final hasOldColumn = columns.any((column) {
+        return column['name'] == 'password_hash';
+      });
+
+      if (hasOldColumn) {
+        // make a new table, copy the rows over, drop the old table and
+        // rename the new one
+        const newUserTable = 'users_new';
+
+        await _createUserTable(database, tableName: newUserTable);
+
+        await database.execute('''
+          INSERT INTO $newUserTable
+            (id, full_name, email, password, role, created_at)
+          SELECT id, full_name, email, password_hash, role, created_at
+          FROM $userTable
+        ''');
+
+        await database.execute('DROP TABLE $userTable');
+
+        await database.execute(
+          'ALTER TABLE $newUserTable RENAME TO $userTable',
+        );
+      }
+    }
   }
 
   // adding a new user
   Future<int> insertUser({
     required String fullName,
     required String email,
-    required String passwordHash,
+    required String password,
     String role = 'Member',
   }) async {
     final db = await database;
@@ -181,7 +256,7 @@ class DatabaseHelper {
       {
         'full_name': fullName.trim(),
         'email': email.toLowerCase().trim(),
-        'password_hash': passwordHash,
+        'password': password,
         'role': role,
         'created_at': DateTime.now().toIso8601String(),
       },
@@ -197,6 +272,13 @@ class DatabaseHelper {
       userTable,
       orderBy: 'full_name ASC',
     );
+  }
+
+  // getting all the team members
+  Future<List<Member>> getMembers() async {
+    final users = await getUsers();
+
+    return users.map(Member.fromMap).toList();
   }
 
   // getting one user by email
@@ -263,6 +345,25 @@ class DatabaseHelper {
       },
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  // updating the password of a user
+  Future<int> updateUserPassword({
+    required String email,
+    required String password,
+  }) async {
+    final db = await database;
+
+    return db.update(
+      userTable,
+      {
+        'password': password,
+      },
+      where: 'email = ?',
+      whereArgs: [
+        email.toLowerCase().trim(),
+      ],
     );
   }
 
