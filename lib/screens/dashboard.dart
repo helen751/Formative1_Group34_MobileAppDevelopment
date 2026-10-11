@@ -2,23 +2,20 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../data/mock_data.dart';
+import '../database/database_seeder.dart';
 import '../models/devtrack_models.dart';
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
-import '../widgets/filter_pill.dart';
 import '../widgets/task_tile.dart';
 
 import '../database/database_helper.dart';
 import '../widgets/notification_sheet.dart';
 import '../services/task_notification_service.dart';
-<<<<<<< Updated upstream
-=======
 import 'task_details_page.dart';
 
 
 // project name shown on the progress card
 const projectName = 'DevTrack';
->>>>>>> Stashed changes
 
 /// Whose tasks the dashboard counts: the whole team or only the signed-in user.
 enum _Scope { everyone, mine }
@@ -26,9 +23,6 @@ enum _Scope { everyone, mine }
 /// Dashboard tab: project progress, due counters, SLA overview and the tasks that
 /// need attention. Owns its refresh, scope and filter state.
 class DashboardPage extends StatefulWidget {
-<<<<<<< Updated upstream
-  const DashboardPage({super.key, this.onSeeAll, this.onNewTask});
-=======
   const DashboardPage({
     super.key,
     this.onSeeAll,
@@ -37,7 +31,6 @@ class DashboardPage extends StatefulWidget {
     this.onChanged,
     this.refreshCount = 0,
   });
->>>>>>> Stashed changes
 
   /// Called when "See all" is tapped (switches to the Tasks tab).
   final VoidCallback? onSeeAll;
@@ -45,8 +38,6 @@ class DashboardPage extends StatefulWidget {
   /// Called when the floating "New task" button is tapped.
   final VoidCallback? onNewTask;
 
-<<<<<<< Updated upstream
-=======
   // telling the other tabs that a task was changed from here
   final VoidCallback? onChanged;
 
@@ -56,7 +47,6 @@ class DashboardPage extends StatefulWidget {
   // storing the logged-in user
   final Map<String, Object?>? user;
 
->>>>>>> Stashed changes
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
@@ -76,12 +66,16 @@ class _DashboardPageState extends State<DashboardPage> {
   final _notifications =
   ValueNotifier<List<AppNotification>>([]);
 
+  // tasks from the database (null until the first load is done)
+  List<ProjectTask>? _tasks;
+  bool _loadFailed = false;
+
   // Set to false when the user closes the alert banner.
   bool _showAlert = true;
   _Scope _scope = _Scope.everyone;
 
-  /// Status filter for the "Needs attention" list; null shows all open tasks.
-  SlaStatus? _filter;
+  // how many recent tasks the dashboard shows
+  static const _recentCount = 5;
 
   @override
   void dispose() {
@@ -93,8 +87,55 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
 
-    // loading notifications when the dashboard opens
+    // loading tasks and notifications when the dashboard opens
+    _loadTasks();
     loadNotifications();
+  }
+
+  @override
+  void didUpdateWidget(DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // reloading after a new task was added
+    if (widget.refreshCount != oldWidget.refreshCount) {
+      _loadTasks();
+      loadNotifications();
+    }
+  }
+
+  // getting tasks from the database
+  Future<void> _loadTasks() async {
+    try {
+      final savedTasks = await DatabaseHelper.instance.getTasks();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _tasks = savedTasks;
+        _loadFailed = false;
+      });
+    } catch (error) {
+      debugPrint('Could not load tasks: $error');
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _loadFailed = true);
+    }
+  }
+
+  // opening a task's details, then reloading in case it was changed
+  Future<void> _openDetails(ProjectTask task) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TaskDetailsPage(task: task)),
+    );
+
+    await _loadTasks();
+    widget.onChanged?.call();
   }
 
   // getting notifications from the database
@@ -133,13 +174,8 @@ class _DashboardPageState extends State<DashboardPage> {
   // reloading tasks and notifications
   Future<void> _fetch() async {
     await TaskNotificationService.checkTaskDeadlines();
+    await _loadTasks();
     await loadNotifications();
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {});
   }
 
   @override
@@ -168,24 +204,37 @@ class _DashboardPageState extends State<DashboardPage> {
   /// The scrollable dashboard content. Everything is computed from [tasks], so
   /// switching the scope updates the ring, counters, SLA cards and list together.
   Widget _buildContent() {
-    final List<Task> tasks = _scope == _Scope.mine
-        ? mockTasks.where((t) => t.assignee == currentUserFirstName).toList()
-        : mockTasks;
-    final open = tasks.open;
+    final savedTasks = _tasks;
+
+    // Nothing to show until the tasks load.
+    if (savedTasks == null) {
+      return _loadFailed
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(32),
+              children: const [
+                Text(
+                  'Could not load tasks. Pull down to try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: DevTrackColors.muted, fontSize: 14),
+                ),
+              ],
+            )
+          : const Center(
+              child: CircularProgressIndicator(color: DevTrackColors.ink),
+            );
+    }
+
+    final List<ProjectTask> tasks = _scope == _Scope.mine
+        ? savedTasks.where((t) => t.assignee == currentUserFirstName).toList()
+        : savedTasks;
     final overdue = tasks.countOf(SlaStatus.overdue);
     final atRisk = tasks.countOf(SlaStatus.atRisk);
 
-    // Open tasks for the list, most urgent first and narrowed by the selected
-    // chip. Completed tasks are never listed here.
-    final visible = [
-      for (final status in const [
-        SlaStatus.overdue,
-        SlaStatus.atRisk,
-        SlaStatus.onTrack,
-      ])
-        if (_filter == null || _filter == status)
-          ...open.where((t) => t.status == status),
-    ];
+    // the most recently added tasks (a higher id means added later)
+    final recent = [...tasks]
+      ..sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+    final visible = recent.take(_recentCount).toList();
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -239,58 +288,46 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 16),
           _SlaGrid(tasks: tasks),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Needs attention', style: _sectionTitle),
-              ),
+          const Text('Recent tasks', style: _sectionTitle),
+          if (visible.isEmpty) ...[
+            const SizedBox(height: 16),
+            const _EmptyState(),
+          ] else ...[
+            for (final task in visible) ...[
+              const SizedBox(height: 12),
               GestureDetector(
-                onTap: widget.onSeeAll,
-                child: const Text(
-                  'See all',
-                  style: TextStyle(
-                    color: DevTrackColors.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+                onTap: () => _openDetails(task),
+                child: TaskTile(
+                  task: task,
+                  subtitle: '${task.dueLabel} · ${task.assignee}',
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          // Two spaces before each count keep the label and number visually apart.
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilterPill(
-                label: 'All  ${open.length}',
-                selected: _filter == null,
-                onTap: () => setState(() => _filter = null),
-              ),
-              FilterPill(
-                label: 'Overdue  $overdue',
-                selected: _filter == SlaStatus.overdue,
-                onTap: () => setState(() => _filter = SlaStatus.overdue),
-              ),
-              FilterPill(
-                label: 'At Risk  $atRisk',
-                selected: _filter == SlaStatus.atRisk,
-                onTap: () => setState(() => _filter = SlaStatus.atRisk),
-              ),
-            ],
-          ),
-          if (visible.isEmpty) ...[
             const SizedBox(height: 16),
-            _EmptyState(filter: _filter),
-          ] else
-            for (final task in visible) ...[
-              const SizedBox(height: 16),
-              TaskTile(
-                task: task,
-                subtitle: '${task.dueLabel} · ${task.assignee}',
+            // going to the tasks tab for the full list
+            OutlinedButton.icon(
+              onPressed: widget.onSeeAll,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: Text(
+                tasks.length > _recentCount
+                    ? 'Show more (${tasks.length - _recentCount} more)'
+                    : 'Show all tasks',
               ),
-            ],
+              style: OutlinedButton.styleFrom(
+                foregroundColor: DevTrackColors.ink,
+                backgroundColor: DevTrackColors.surface,
+                side: const BorderSide(color: DevTrackColors.border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -774,7 +811,7 @@ class _DueTile extends StatelessWidget {
 class _SlaGrid extends StatelessWidget {
   const _SlaGrid({required this.tasks});
 
-  final List<Task> tasks;
+  final List<ProjectTask> tasks;
 
   static const _icons = {
     SlaStatus.onTrack: Icons.trending_up_rounded,
@@ -866,17 +903,9 @@ class _SlaCard extends StatelessWidget {
   }
 }
 
-/// Shown when the selected filter has no tasks.
+// shown when there are no tasks yet
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.filter});
-
-  final SlaStatus? filter;
-
-  String get _message => switch (filter) {
-        SlaStatus.overdue => 'No overdue tasks right now. Nice work.',
-        SlaStatus.atRisk => 'No at-risk tasks right now. Nice work.',
-        _ => 'No open tasks right now. Nice work.',
-      };
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -908,10 +937,10 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            _message,
+          const Text(
+            'No tasks yet. Tap New task to add the first one.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: DevTrackColors.muted, fontSize: 13),
+            style: TextStyle(color: DevTrackColors.muted, fontSize: 13),
           ),
         ],
       ),

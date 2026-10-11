@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../database/database_helper.dart';
 import '../models/project_task.dart';
+import 'create_task_page.dart';
 
 class TaskDetailsPage extends StatefulWidget {
   const TaskDetailsPage({
@@ -53,6 +54,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
     setState(() {
       task = task.copyWith(
         isCompleted: newCompletedStatus,
+        stage: newCompletedStatus ? TaskStage.done : TaskStage.toDo,
       );
 
       isUpdating = false;
@@ -122,15 +124,28 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
     Navigator.pop(context, true);
   }
 
-  // opening the edit page later
-  void openEditPage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('The edit form will be connected here'),
+  // opening the edit page
+  Future<void> openEditPage() async {
+    final updated = await Navigator.push<ProjectTask>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateTaskPage(task: task),
       ),
     );
 
-    // replace the message above when the edit form is ready
+    if (updated == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      task = updated;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Task updated'),
+      ),
+    );
   }
 
   // formatting the due date
@@ -230,7 +245,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
                 vertical: 8,
               ),
               decoration: BoxDecoration(
-                color: status.color.withOpacity(0.15),
+                color: status.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: status.color,
@@ -280,6 +295,24 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> {
               icon: Icons.person_outline,
               label: 'Assigned to',
               value: task.assignee,
+            ),
+
+            detailRow(
+              icon: Icons.folder_outlined,
+              label: 'Category',
+              value: task.category,
+            ),
+
+            detailRow(
+              icon: Icons.priority_high_rounded,
+              label: 'Priority',
+              value: task.priority.label,
+            ),
+
+            detailRow(
+              icon: Icons.format_list_bulleted_rounded,
+              label: 'Progress',
+              value: task.stage.label,
             ),
 
             detailRow(
