@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/devtrack_models.dart';
+import '../models/project_task.dart';
 import '../theme/devtrack_theme.dart';
 import 'status_badge.dart';
 
@@ -15,7 +15,7 @@ class TaskTile extends StatelessWidget {
     this.compact = false,
   });
 
-  final Task task;
+  final ProjectTask task;
 
   /// Second line under the title, e.g. the due text, optionally with the assignee.
   final String subtitle;

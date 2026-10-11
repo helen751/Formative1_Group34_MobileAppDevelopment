@@ -3,11 +3,91 @@ import 'package:sqflite/sqflite.dart';
 import '../models/project_task.dart';
 import 'database_helper.dart';
 
+/// The user the dashboard treats as signed in (greeting and "My tasks").
+/// Temporary until login saves the real user.
+const currentUserFirstName = 'Derrick';
+
+/// Project name shown on the dashboard progress card.
+const projectName = 'DevTrack';
+
 class DatabaseSeeder {
   // adding default data when the tables are empty
   static Future<void> seedDatabase() async {
+    await _addDefaultUsers();
     await _addDefaultTasks();
     await _addDefaultNotifications();
+  }
+
+  // what the default users had before they got passwords
+  static const String _oldLockedPasswordHash = '!';
+
+  // the default team members and their passwords
+  // (passwords are saved as plain text)
+  static const _defaultUsers = [
+    (
+      fullName: 'Emmanuel',
+      email: 'emmanuel@devtrack.app',
+      password: 'Emmanuel@2026',
+      role: 'Auth Developer',
+    ),
+    (
+      fullName: 'Derrick Nshuti',
+      email: 'derrick@devtrack.app',
+      password: 'Derrick@2026',
+      role: 'Project Lead',
+    ),
+    (
+      fullName: 'Christian',
+      email: 'christian@devtrack.app',
+      password: 'Christian@2026',
+      role: 'Task Module Developer',
+    ),
+    (
+      fullName: 'Helen',
+      email: 'helen@devtrack.app',
+      password: 'Helen@2026',
+      role: 'Database & Stats',
+    ),
+  ];
+
+  // adding the default team members
+  static Future<void> _addDefaultUsers() async {
+    final database = await DatabaseHelper.instance.database;
+
+    // checking if users already exist
+    final result = await database.rawQuery(
+      'SELECT COUNT(*) FROM ${DatabaseHelper.userTable}',
+    );
+
+    final userCount = Sqflite.firstIntValue(result) ?? 0;
+
+    // saving each default user
+    if (userCount == 0) {
+      for (final user in _defaultUsers) {
+        await DatabaseHelper.instance.insertUser(
+          fullName: user.fullName,
+          email: user.email,
+          password: user.password,
+          role: user.role,
+        );
+      }
+
+      return;
+    }
+
+    // old installs: giving the default users their passwords
+    for (final user in _defaultUsers) {
+      final savedUser =
+          await DatabaseHelper.instance.getUserByEmail(user.email);
+
+      if (savedUser != null &&
+          savedUser['password'] == _oldLockedPasswordHash) {
+        await DatabaseHelper.instance.updateUserPassword(
+          email: user.email,
+          password: user.password,
+        );
+      }
+    }
   }
 
   // adding the default tasks
@@ -30,6 +110,7 @@ class DatabaseSeeder {
     final defaultTasks = <ProjectTask>[
       ProjectTask(
         title: 'Design login screen',
+        category: 'UI/UX Design',
         description: 'Design the login screen for the application',
         assignee: 'Emmanuel',
         dueDate: now.subtract(
@@ -38,6 +119,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Register form validation',
+        category: 'Mobile Development',
         description: 'Add validation to the registration form',
         assignee: 'Emmanuel',
         dueDate: now,
@@ -45,6 +127,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Dashboard UI',
+        category: 'UI/UX Design',
         description: 'Create the dashboard user interface',
         assignee: 'Derrick',
         dueDate: now.add(
@@ -53,6 +136,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Team members page',
+        category: 'Mobile Development',
         description: 'Create the team members page',
         assignee: 'Derrick',
         dueDate: now.add(
@@ -61,6 +145,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Set up SQLite tables',
+        category: 'Backend (Local)',
         description: 'Create the local database tables',
         assignee: 'Helen',
         dueDate: now.add(
@@ -69,6 +154,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Build create/edit task form',
+        category: 'Mobile Development',
         description: 'Create the form for adding and editing tasks',
         assignee: 'Christian',
         dueDate: now.add(
@@ -77,6 +163,7 @@ class DatabaseSeeder {
       ),
       ProjectTask(
         title: 'Task details layout',
+        category: 'UI/UX Design',
         description: 'Create the task details page layout',
         assignee: 'Helen',
         dueDate: now.add(
